@@ -9,6 +9,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletContext;
 
 public class GlobalRequestServlet extends HttpServlet {    
     @Override
@@ -37,30 +38,29 @@ public class GlobalRequestServlet extends HttpServlet {
 
     @Override
     protected void service(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+        throws ServletException, IOException {
+        ServletContext context = getServletContext(); 
+        String contextPath = request.getContextPath();  // ex: /Sprint1
+        String uri = request.getRequestURI();           // ex: /Sprint1/aaaaa
+        String path = uri.substring(contextPath.length()); // -> /aaaaa
 
-        String path = request.getRequestURI().substring(request.getContextPath().length());
-
+        System.out.println("🔍 Requête: " + uri);
+        System.out.println("➡️ Chemin relatif: " + path);
         if (path.equals("/") || path.isEmpty()) {
             path = "/index.html";
         }
-
-        URL resourceUrl = getServletContext().getResource(path);
-
-        if (resourceUrl != null) {
-            RequestDispatcher dispatcher = request.getRequestDispatcher(path);
-            dispatcher.forward(request, response);
+       URL res = context.getResource(path);
+        if (res != null) { 
+            System.out.println("eto foana: "+(context.getResource(path)));
+              // Essayer de forward vers le servlet "default" pour les fichiers statiques
+              RequestDispatcher defaultDispatcher = context.getNamedDispatcher("default");
+            if (defaultDispatcher != null) {
+                defaultDispatcher.forward(request, response);
+            }
         } else {
-            response.setContentType("text/html;charset=UTF-8");
-            PrintWriter out = response.getWriter();
-            out.println("<h2>Debug Request</h2>");
-            out.println("<ul>");
-            out.println("<li><strong>Méthode :</strong> " + request.getMethod() + "</li>");
-            out.println("<li><strong>Chemin demandé :</strong> " + request.getRequestURI() + "</li>");
-            out.println("<li><strong>ServletPath :</strong> " + request.getServletPath() + "</li>");
-            out.println("<li><strong>ContextPath :</strong> " + request.getContextPath() + "</li>");
-            out.println("<li><strong>Query String :</strong> " + request.getQueryString() + "</li>");
-            out.println("</ul>");
+            // Si le servlet default n’existe pas, juste afficher l’URL
+            response.setContentType("text/plain;charset=UTF-8");
+            response.getWriter().println("URL demandée : " + request.getRequestURI());
         }
     }
 }
