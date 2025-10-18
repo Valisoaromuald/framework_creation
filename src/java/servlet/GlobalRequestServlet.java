@@ -44,8 +44,6 @@ public class GlobalRequestServlet extends HttpServlet {
         String uri = request.getRequestURI();           // ex: /Sprint1/aaaaa
         String path = uri.substring(contextPath.length()); // -> /aaaaa
 
-        System.out.println("🔍 Requête: " + uri);
-        System.out.println("➡️ Chemin relatif: " + path);
         if (path.equals("/") || path.isEmpty()) {
             path = "/index.html";
         }
