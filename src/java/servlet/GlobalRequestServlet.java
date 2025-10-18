@@ -40,9 +40,9 @@ public class GlobalRequestServlet extends HttpServlet {
     protected void service(HttpServletRequest request, HttpServletResponse response)
         throws ServletException, IOException {
         ServletContext context = getServletContext(); 
-        String contextPath = request.getContextPath();  // ex: /Sprint1
-        String uri = request.getRequestURI();           // ex: /Sprint1/aaaaa
-        String path = uri.substring(contextPath.length()); // -> /aaaaa
+        String contextPath = request.getContextPath();  
+        String uri = request.getRequestURI();          
+        String path = uri.substring(contextPath.length()); 
 
         System.out.println("🔍 Requête: " + uri);
         System.out.println("➡️ Chemin relatif: " + path);
@@ -51,14 +51,11 @@ public class GlobalRequestServlet extends HttpServlet {
         }
        URL res = context.getResource(path);
         if (res != null) { 
-            System.out.println("eto foana: "+(context.getResource(path)));
-              // Essayer de forward vers le servlet "default" pour les fichiers statiques
               RequestDispatcher defaultDispatcher = context.getNamedDispatcher("default");
             if (defaultDispatcher != null) {
                 defaultDispatcher.forward(request, response);
             }
         } else {
-            // Si le servlet default n’existe pas, juste afficher l’URL
             response.setContentType("text/plain;charset=UTF-8");
             response.getWriter().println("URL demandée : " + request.getRequestURI());
         }
