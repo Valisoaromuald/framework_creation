@@ -43,7 +43,6 @@ public class ClasseUtilitaire {
             try {
                 classe = Class.forName(realClassName);
                 if (classe != null) {
-                    System.out.println("nom de classe: "+classe);
                     break;
                 }
             } catch (ClassNotFoundException e) {
