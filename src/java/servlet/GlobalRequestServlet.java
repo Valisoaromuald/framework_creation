@@ -3,6 +3,7 @@ package servlet;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
@@ -93,16 +94,31 @@ public class GlobalRequestServlet extends HttpServlet {
                 MappingMethodClass mmc = urlInfo.getValue();
                 String className = mmc.getClassName();
                 String methodName = mmc.getMethodName(); 
-                out.println("<p><h4> url demande:</h4>"+url+"</p>");
-                out.print("</br>");
-                out.println("<p><h4>nom de classe:</h4>"+className+"</p>");
-                out.print("</br>");
-                out.println("<p><h4>methode associee:</h4> "+methodName+"</p>");
-                out.print("</br>");
+                actionToDo(mmc, request, response);
+                // out.println("<p><h4> url demande:</h4>"+url+"</p>");
+                // out.print("</br>");
+                // out.println("<p><h4>nom de classe:</h4>"+className+"</p>");
+                // out.print("</br>");
+                // out.println("<p><h4>methode associee:</h4> "+methodName+"</p>");
+                // out.print("</br>");
             } catch (Exception e) {
                 response.getWriter().println("<h1>404-Non trouvé</h1>");
                 response.getWriter().println("URL demandée : " + request.getRequestURI());
             }
+        }
+    }
+    public void actionToDo(MappingMethodClass mcc,HttpServletRequest req, HttpServletResponse res)throws Exception{
+        try {
+            Class<?> c = Class.forName(mcc.getClassName());
+            Method m = c.getDeclaredMethod(mcc.getMethodName());
+            Class<?> typeRetour = m.getReturnType();
+            if(typeRetour.equals(String.class)){
+                res.setContentType("text/plain");
+                PrintWriter out = res.getWriter();
+                out.println(m.invoke(c.getDeclaredConstructor().newInstance()));
+            }
+        } catch (Exception e) {
+            throw new Exception(e.getMessage());
         }
     }
 
