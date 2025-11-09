@@ -19,7 +19,6 @@ import jakarta.servlet.ServletContext;
 
 public class GlobalRequestServlet extends HttpServlet {
     private File root;
-    private Map<String, MappingMethodClass> mappingMethodClass = new HashMap<>();
 
     @Override
     public void init() throws ServletException {
@@ -27,7 +26,7 @@ public class GlobalRequestServlet extends HttpServlet {
             String rootPath = System.getProperty("user.dir");
             root = new File(rootPath);
             ServletContext context = getServletContext();
-            mappingMethodClass = ClasseUtilitaire.generateUrlsWithMappedMethodClass(root);
+           Map<String, MappingMethodClass> mappingMethodClass = ClasseUtilitaire.generateUrlsWithMappedMethodClass(root);
     
             context.setAttribute("hashmap",mappingMethodClass);
         } catch (Exception e) {
@@ -69,7 +68,6 @@ public class GlobalRequestServlet extends HttpServlet {
     @Override
     protected void service(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        System.out.println("size: " + this.mappingMethodClass.size());
         ServletContext context = getServletContext();
         String contextPath = request.getContextPath();
         String uri = request.getRequestURI();
