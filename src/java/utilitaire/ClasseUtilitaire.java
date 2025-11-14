@@ -67,7 +67,6 @@ public class ClasseUtilitaire {
                     if (m.isAnnotationPresent(UrlMapping.class)) {
                         results.put(m.getAnnotation(UrlMapping.class).url(),
                                 new MappingMethodClass(clazz.getName(), m.getName()));
-                        break;
                     }
                 }
             }

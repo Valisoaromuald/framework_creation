@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import utilitaire.ClasseUtilitaire;
 import utilitaire.MappingMethodClass;
+import utilitaire.ModelView;
 import jakarta.servlet.ServletContext;
 
 public class GlobalRequestServlet extends HttpServlet {
@@ -28,7 +29,6 @@ public class GlobalRequestServlet extends HttpServlet {
             root = new File(rootPath);
             ServletContext context = getServletContext();
            Map<String, MappingMethodClass> mappingMethodClass = ClasseUtilitaire.generateUrlsWithMappedMethodClass(root);
-    
             context.setAttribute("hashmap",mappingMethodClass);
         } catch (Exception e) {
             System.out.println("Erreur d'initialisation : " + e.getMessage());;
@@ -95,13 +95,8 @@ public class GlobalRequestServlet extends HttpServlet {
                 String className = mmc.getClassName();
                 String methodName = mmc.getMethodName(); 
                 actionToDo(mmc, request, response);
-                // out.println("<p><h4> url demande:</h4>"+url+"</p>");
-                // out.print("</br>");
-                // out.println("<p><h4>nom de classe:</h4>"+className+"</p>");
-                // out.print("</br>");
-                // out.println("<p><h4>methode associee:</h4> "+methodName+"</p>");
-                // out.print("</br>");
-            } catch (Exception e) {
+                } catch (Exception e) {
+                e.printStackTrace();
                 response.getWriter().println("<h1>404-Non trouvé</h1>");
                 response.getWriter().println("URL demandée : " + request.getRequestURI());
             }
@@ -116,6 +111,13 @@ public class GlobalRequestServlet extends HttpServlet {
                 res.setContentType("text/plain");
                 PrintWriter out = res.getWriter();
                 out.println(m.invoke(c.getDeclaredConstructor().newInstance()));
+            }
+            else if(typeRetour.equals(ModelView.class)){
+                res.setContentType("text/html");
+                RequestDispatcher dispat = null;
+                ModelView mv = (ModelView) m.invoke(c.getDeclaredConstructor().newInstance());
+                dispat = req.getRequestDispatcher("/"+mv.getView());
+                dispat.forward(req,res);
             }
         } catch (Exception e) {
             throw new Exception(e.getMessage());
