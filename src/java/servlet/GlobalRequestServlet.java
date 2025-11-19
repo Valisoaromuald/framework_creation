@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +29,7 @@ public class GlobalRequestServlet extends HttpServlet {
             String rootPath = System.getProperty("user.dir");
             root = new File(rootPath);
             ServletContext context = getServletContext();
-           Map<String, MappingMethodClass> mappingMethodClass = ClasseUtilitaire.generateUrlsWithMappedMethodClass(root);
+            Map<String, MappingMethodClass> mappingMethodClass = ClasseUtilitaire.generateUrlsWithMappedMethodClass(root);
             context.setAttribute("hashmap",mappingMethodClass);
         } catch (Exception e) {
             System.out.println("Erreur d'initialisation : " + e.getMessage());;
@@ -114,12 +115,19 @@ public class GlobalRequestServlet extends HttpServlet {
             }
             else if(typeRetour.equals(ModelView.class)){
                 res.setContentType("text/html");
+                System.out.println("lavitra loatra akia");
                 RequestDispatcher dispat = null;
                 ModelView mv = (ModelView) m.invoke(c.getDeclaredConstructor().newInstance());
+                if(mv.getObjects().size() != 0){
+                    for(Map.Entry<String,Object> object: mv.getObjects().entrySet()){
+                        req.setAttribute(object.getKey(),object.getValue());
+                    }
+                }
                 dispat = req.getRequestDispatcher("/"+mv.getView());
                 dispat.forward(req,res);
             }
         } catch (Exception e) {
+            e.printStackTrace();
             throw new Exception(e.getMessage());
         }
     }
