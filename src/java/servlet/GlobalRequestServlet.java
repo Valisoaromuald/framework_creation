@@ -93,8 +93,6 @@ public class GlobalRequestServlet extends HttpServlet {
                 PrintWriter out = response.getWriter();
                 String url =urlInfo.getKey();
                 MappingMethodClass mmc = urlInfo.getValue();
-                String className = mmc.getClassName();
-                String methodName = mmc.getMethodName(); 
                 actionToDo(mmc, request, response);
                 } catch (Exception e) {
                 e.printStackTrace();
@@ -106,18 +104,27 @@ public class GlobalRequestServlet extends HttpServlet {
     public void actionToDo(MappingMethodClass mcc,HttpServletRequest req, HttpServletResponse res)throws Exception{
         try {
             Class<?> c = Class.forName(mcc.getClassName());
-            Method m = c.getDeclaredMethod(mcc.getMethodName());
+            Method m = ClasseUtilitaire.getMethodByNom(c, mcc.getMethodName());
+            int nombreParametreMethodes = ClasseUtilitaire.getNombreParametres(m);
+            Object[] objects = null;
+            if(nombreParametreMethodes != 0){
+                objects = new Object[nombreParametreMethodes];
+                for(int i = 0 ; i < nombreParametreMethodes;i++){
+                    objects[i] = null;
+                }
+            }
+            Object instance = c.getDeclaredConstructor().newInstance();
+            Object obj = m.invoke(instance,objects);
             Class<?> typeRetour = m.getReturnType();
             if(typeRetour.equals(String.class)){
                 res.setContentType("text/plain");
                 PrintWriter out = res.getWriter();
-                out.println(m.invoke(c.getDeclaredConstructor().newInstance()));
+                out.println(obj);
             }
             else if(typeRetour.equals(ModelView.class)){
                 res.setContentType("text/html");
-                System.out.println("lavitra loatra akia");
                 RequestDispatcher dispat = null;
-                ModelView mv = (ModelView) m.invoke(c.getDeclaredConstructor().newInstance());
+                ModelView mv = (ModelView) obj;
                 if(mv.getObjects().size() != 0){
                     for(Map.Entry<String,Object> object: mv.getObjects().entrySet()){
                         req.setAttribute(object.getKey(),object.getValue());
