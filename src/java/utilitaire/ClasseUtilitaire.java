@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import annotation.Controleur;
 import annotation.UrlMapping;
@@ -75,11 +77,18 @@ public class ClasseUtilitaire {
     }
     public static Map.Entry<String,MappingMethodClass> getRelevantMethodAndClassNames(Map<String, MappingMethodClass>urlsWithMappedMethodClass,File file,String url) throws Exception{
         Map.Entry<String,MappingMethodClass> result = null;
+        Matcher matcher = null;
         try {
             for(Map.Entry<String,MappingMethodClass> entry: urlsWithMappedMethodClass.entrySet()){
-                if(entry.getKey().equals(url)){
+                matcher = urlMatcher(entry.getKey(),url);
+                if(matcher == null){
+                    if(entry.getKey().equals(url)){
+                        result = entry;
+                        break;
+                    }
+                }
+                else{
                     result = entry;
-                    break;
                 }
             }
         } catch (Exception e) {
@@ -90,4 +99,32 @@ public class ClasseUtilitaire {
         }
         return result;
     }
+    public static Matcher urlMatcher(String path,String url){
+        String regex = "^"+path.replaceAll("\\{[^/]+?}","([^/]+)")+"$";
+        try {
+            Pattern pattern = Pattern.compile(regex);
+            Matcher matcher = pattern.matcher(url);
+            if(matcher.matches()){
+                return matcher;
+            }
+            else{
+                return null;
+            }
+        } catch (Exception e) {
+            return null;
+        }
     }
+    public static int getNombreParametres(Method m){
+        return m.getParameterCount();
+    }    
+
+        public static  Method getMethodByNom(Class<?> classe,String name){
+            Method[] methods = classe.getDeclaredMethods();
+            for(Method m: methods){
+                if(m.getName().equals(name)){
+                    return m;
+                }
+            }
+            return null;
+        } 
+}
