@@ -101,41 +101,54 @@ public class GlobalRequestServlet extends HttpServlet {
             }
         }
     }
-    public void actionToDo(MappingMethodClass mcc,HttpServletRequest req, HttpServletResponse res)throws Exception{
+    public void actionToDo(MappingMethodClass mcc, HttpServletRequest req, HttpServletResponse res) throws Exception {
         try {
             Class<?> c = Class.forName(mcc.getClassName());
             Method m = ClasseUtilitaire.getMethodByNom(c, mcc.getMethodName());
-            int nombreParametreMethodes = ClasseUtilitaire.getNombreParametres(m);
+
+            if (m == null) {
+                throw new Exception("Méthode introuvable: " + mcc.getMethodName());
+            }
+
             Object[] objects = null;
-            if(nombreParametreMethodes != 0){
-                objects = new Object[nombreParametreMethodes];
-                for(int i = 0 ; i < nombreParametreMethodes;i++){
-                    objects[i] = null;
-                }
-            }
+
             Object instance = c.getDeclaredConstructor().newInstance();
-            Object obj = m.invoke(instance,objects);
-            Class<?> typeRetour = m.getReturnType();
-            if(typeRetour.equals(String.class)){
-                res.setContentType("text/plain");
-                PrintWriter out = res.getWriter();
-                out.println(obj);
+            Object obj = m.invoke(instance, objects);
+
+            if (obj == null) {
+                obj = "";
             }
-            else if(typeRetour.equals(ModelView.class)){
-                res.setContentType("text/html");
-                RequestDispatcher dispat = null;
+
+            Class<?> typeRetour = m.getReturnType();
+
+
+            if (typeRetour.equals(String.class)) {
+                res.setContentType("text/plain; charset=UTF-8");
+                res.getWriter().println(obj);
+                return;
+            }
+
+            
+            if (ModelView.class.isAssignableFrom(typeRetour)) {
                 ModelView mv = (ModelView) obj;
-                if(mv.getObjects().size() != 0){
-                    for(Map.Entry<String,Object> object: mv.getObjects().entrySet()){
-                        req.setAttribute(object.getKey(),object.getValue());
+
+                if (mv.getObjects() != null) {
+                    for (Map.Entry<String, Object> entry : mv.getObjects().entrySet()) {
+                        req.setAttribute(entry.getKey(), entry.getValue());
                     }
                 }
-                dispat = req.getRequestDispatcher("/"+mv.getView());
-                dispat.forward(req,res);
+
+                RequestDispatcher dispatcher = req.getRequestDispatcher("/" + mv.getView());
+                dispatcher.forward(req, res);
+                return;
             }
+
+            
+            throw new Exception("Type retour non supporté : " + typeRetour.getName());
+
         } catch (Exception e) {
             e.printStackTrace();
-            throw new Exception(e.getMessage());
+            throw new Exception("Erreur dans actionToDo", e);
         }
     }
 
