@@ -126,5 +126,42 @@ public class ClasseUtilitaire {
                 }
             }
             return null;
-        } 
+    } 
+    /**
+     * Retourne une valeur initiale par défaut pour un type donné
+     * @param type Classe du paramètre
+     * @return Objet initialisé
+     */
+    public static Object getDefaultValue(Class<?> type) {
+        if (!type.isPrimitive()) {
+            return null; // tous les objets non primitifs -> null
+        }
+        if (type.equals(int.class)) {
+            return 0;
+        }
+        if (type.equals(boolean.class)) {
+            return false;
+        }
+        if (type.equals(double.class)) {
+            return 0.0;
+        }
+        if (type.equals(float.class)) {
+            return 0.0f;
+        }
+        if (type.equals(long.class)) {
+            return 0L;
+        }
+        if (type.equals(short.class)) {
+            return (short) 0;
+        }
+        if (type.equals(byte.class)) {
+            return (byte) 0;
+        }
+        if (type.equals(char.class)) {
+            return '\0';
+        }
+        // Par défaut, retourne null (sécurité)
+        return null;
+    }
+    
 }
