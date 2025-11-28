@@ -61,14 +61,13 @@ public class ClasseUtilitaire {
         for (String className : classNames) {
             Class<?> clazz = createClass(className);
             if(clazz != null){
-
-            }
-            if (clazz.isAnnotationPresent(Controleur.class)) {
-                Method[] methodes = clazz.getDeclaredMethods();
-                for (Method m : methodes) {
-                    if (m.isAnnotationPresent(UrlMapping.class)) {
-                        results.put(m.getAnnotation(UrlMapping.class).url(),
-                                new MappingMethodClass(clazz.getName(), m.getName()));
+                if (clazz.isAnnotationPresent(Controleur.class)) {
+                    Method[] methodes = clazz.getDeclaredMethods();
+                    for (Method m : methodes) {
+                        if (m.isAnnotationPresent(UrlMapping.class)) {
+                            results.put(m.getAnnotation(UrlMapping.class).url(),
+                                    new MappingMethodClass(clazz.getName(), m.getName()));
+                        }
                     }
                 }
             }
