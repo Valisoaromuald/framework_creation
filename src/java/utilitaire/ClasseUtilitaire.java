@@ -93,9 +93,6 @@ public class ClasseUtilitaire {
         } catch (Exception e) {
             System.out.println("erreur lors de la recupération des noms de classe contenant la mehtodes associés à l'url: "+e.getMessage());
         }
-        if(result == null){
-            throw new Exception("aucun resultat trouvé");
-        }
         return result;
     }
     public static Matcher urlMatcher(String path,String url){
