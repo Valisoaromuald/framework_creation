@@ -26,13 +26,15 @@ public class GlobalRequestServlet extends HttpServlet {
     @Override
     public void init() throws ServletException {
         try {
-            String rootPath = System.getProperty("user.dir");
-            root = new File(rootPath);
             ServletContext context = getServletContext();
-            Map<String, MappingMethodClass> mappingMethodClass = ClasseUtilitaire.generateUrlsWithMappedMethodClass(root);
-            context.setAttribute("hashmap",mappingMethodClass);
+            String rootPath = context.getRealPath("/");
+            root = new File(rootPath);
+            Map<String, MappingMethodClass> mappingMethodClass = ClasseUtilitaire
+                    .generateUrlsWithMappedMethodClass(root);
+            context.setAttribute("hashmap", mappingMethodClass);
         } catch (Exception e) {
-            System.out.println("Erreur d'initialisation : " + e.getMessage());;
+            System.out.println("Erreur d'initialisation : " + e.getMessage());
+            ;
             e.printStackTrace();
         }
     }
@@ -86,69 +88,69 @@ public class GlobalRequestServlet extends HttpServlet {
             }
         } else {
             response.setContentType("text/html;charset=UTF-8");
+
             try {
-                Map<String,MappingMethodClass> urlsWithMappedMethodAndClass = (Map<String,MappingMethodClass>) context.getAttribute("hashmap");
-                Map.Entry<String,MappingMethodClass>urlInfo = ClasseUtilitaire.getRelevantMethodAndClassNames(urlsWithMappedMethodAndClass,root, path);
-                String urlDemande = request.getRequestURI(); 
+                Map<String, MappingMethodClass> urlsWithMappedMethodAndClass = (Map<String, MappingMethodClass>) context
+                        .getAttribute("hashmap");
+                        Map.Entry<String, MappingMethodClass> urlInfo = ClasseUtilitaire
+                        .getRelevantMethodAndClassNames(urlsWithMappedMethodAndClass, root, path);
+                        if (urlInfo == null) {
+                            PrintWriter out = response.getWriter();
+                            out.println("<h1>404 - Page / Not found</h1>");
+                            out.println("Url demandée: "+path);
+                        return;
+                }
+
+                actionToDo(urlInfo.getValue(), request, response);
+
+            } catch (Exception e) {
+
+                
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                response.setContentType("text/plain");
                 PrintWriter out = response.getWriter();
-                String url =urlInfo.getKey();
-                MappingMethodClass mmc = urlInfo.getValue();
-                actionToDo(mmc, request, response);
-                } catch (Exception e) {
-                e.printStackTrace();
-                response.getWriter().println("<h1>404-Non trouvé</h1>");
-                response.getWriter().println("URL demandée : " + request.getRequestURI());
+                out.println("UNE ERREUR EST SURVENUE");
+                out.println("Message : " + e.getMessage());
+                out.println();
+                e.printStackTrace(out);
             }
         }
     }
+
     public void actionToDo(MappingMethodClass mcc, HttpServletRequest req, HttpServletResponse res) throws Exception {
         try {
             Class<?> c = Class.forName(mcc.getClassName());
             Method m = ClasseUtilitaire.getMethodByNom(c, mcc.getMethodName());
-
-            if (m == null) {
-                throw new Exception("Méthode introuvable: " + mcc.getMethodName());
-            }
-
+            int nombreParametreMethodes = ClasseUtilitaire.getNombreParametres(m);
             Object[] objects = null;
-
+            if (nombreParametreMethodes != 0) {
+                objects = new Object[nombreParametreMethodes];
+                for (int i = 0; i < nombreParametreMethodes; i++) {
+                    objects[i] = ClasseUtilitaire.getDefaultValue(m.getParameters()[i].getType());
+                }
+            }
             Object instance = c.getDeclaredConstructor().newInstance();
             Object obj = m.invoke(instance, objects);
-
-            if (obj == null) {
-                obj = "";
-            }
-
             Class<?> typeRetour = m.getReturnType();
-
-
             if (typeRetour.equals(String.class)) {
-                res.setContentType("text/plain; charset=UTF-8");
-                res.getWriter().println(obj);
-                return;
-            }
-
-            
-            if (ModelView.class.isAssignableFrom(typeRetour)) {
+                res.setContentType("text/plain");
+                PrintWriter out = res.getWriter();
+                out.println(obj);
+            } else if (typeRetour.equals(ModelView.class)) {
+                res.setContentType("text/html");
+                RequestDispatcher dispat = null;
                 ModelView mv = (ModelView) obj;
-
-                if (mv.getObjects() != null) {
-                    for (Map.Entry<String, Object> entry : mv.getObjects().entrySet()) {
-                        req.setAttribute(entry.getKey(), entry.getValue());
+                if (mv.getObjects().size() != 0) {
+                    for (Map.Entry<String, Object> object : mv.getObjects().entrySet()) {
+                        req.setAttribute(object.getKey(), object.getValue());
                     }
                 }
-
-                RequestDispatcher dispatcher = req.getRequestDispatcher("/" + mv.getView());
-                dispatcher.forward(req, res);
-                return;
+                dispat = req.getRequestDispatcher("/" + mv.getView());
+                dispat.forward(req, res);
             }
-
-            
-            throw new Exception("Type retour non supporté : " + typeRetour.getName());
-
         } catch (Exception e) {
             e.printStackTrace();
-            throw new Exception("Erreur dans actionToDo", e);
+            throw new Exception(e.getMessage());
         }
     }
 

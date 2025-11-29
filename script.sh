@@ -12,7 +12,7 @@ BUILD_PATH="bin/"
 LIBRARY_PATH="lib/"
 TOMCAT_PATH="$HOME/Documents/S5/apache-tomcat-10.1.28"
 JAR_NAME="frontServlet"
-DEPLOY_PATH2="$HOME/Documents/S5/Mr_Naina/Framework/framework_test/lib"   # <-- Dossier secondaire
+DEPLOY_PATH2="$HOME/Documents/S5/MR_Naina/framework/framework_test/lib"   # <-- Dossier secondaire
 
 if [ "$one" = -1 ]; then
     echo -e "$RED\t...Fermeture du Tomcat$NC\n"

@@ -61,14 +61,13 @@ public class ClasseUtilitaire {
         for (String className : classNames) {
             Class<?> clazz = createClass(className);
             if(clazz != null){
-
-            }
-            if (clazz.isAnnotationPresent(Controleur.class)) {
-                Method[] methodes = clazz.getDeclaredMethods();
-                for (Method m : methodes) {
-                    if (m.isAnnotationPresent(UrlMapping.class)) {
-                        results.put(m.getAnnotation(UrlMapping.class).url(),
-                                new MappingMethodClass(clazz.getName(), m.getName()));
+                if (clazz.isAnnotationPresent(Controleur.class)) {
+                    Method[] methodes = clazz.getDeclaredMethods();
+                    for (Method m : methodes) {
+                        if (m.isAnnotationPresent(UrlMapping.class)) {
+                            results.put(m.getAnnotation(UrlMapping.class).url(),
+                                    new MappingMethodClass(clazz.getName(), m.getName()));
+                        }
                     }
                 }
             }
@@ -93,9 +92,6 @@ public class ClasseUtilitaire {
             }
         } catch (Exception e) {
             System.out.println("erreur lors de la recupération des noms de classe contenant la mehtodes associés à l'url: "+e.getMessage());
-        }
-        if(result == null){
-            throw new Exception("aucun resultat trouvé");
         }
         return result;
     }
@@ -126,5 +122,42 @@ public class ClasseUtilitaire {
                 }
             }
             return null;
-        } 
+    } 
+    /**
+     * Retourne une valeur initiale par défaut pour un type donné
+     * @param type Classe du paramètre
+     * @return Objet initialisé
+     */
+    public static Object getDefaultValue(Class<?> type) {
+        if (!type.isPrimitive()) {
+            return null; // tous les objets non primitifs -> null
+        }
+        if (type.equals(int.class)) {
+            return 0;
+        }
+        if (type.equals(boolean.class)) {
+            return false;
+        }
+        if (type.equals(double.class)) {
+            return 0.0;
+        }
+        if (type.equals(float.class)) {
+            return 0.0f;
+        }
+        if (type.equals(long.class)) {
+            return 0L;
+        }
+        if (type.equals(short.class)) {
+            return (short) 0;
+        }
+        if (type.equals(byte.class)) {
+            return (byte) 0;
+        }
+        if (type.equals(char.class)) {
+            return '\0';
+        }
+        // Par défaut, retourne null (sécurité)
+        return null;
+    }
+    
 }
