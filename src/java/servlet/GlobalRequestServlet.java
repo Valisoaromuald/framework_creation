@@ -132,12 +132,12 @@ public class GlobalRequestServlet extends HttpServlet {
             Class<?> typeRetour = m.getReturnType();
 
             if (typeRetour.equals(String.class)) {
-                res.setContentType("text/plain; charset=UTF-8");
-                res.getWriter().println(obj);
-                return;
-            }
-
-            if (typeRetour==ModelView.class) {
+                res.setContentType("text/plain");
+                PrintWriter out = res.getWriter();
+                out.println(obj);
+            } else if (typeRetour.equals(ModelView.class)) {
+                res.setContentType("text/html");
+                RequestDispatcher dispat = null;
                 ModelView mv = (ModelView) obj;
 
                 if (mv.getObjects() != null) {
@@ -150,9 +150,6 @@ public class GlobalRequestServlet extends HttpServlet {
                 dispatcher.forward(req, res);
                 return;
             }
-
-            throw new Exception("Type retour non supporté : " + typeRetour.getName());
-
         } catch (Exception e) {
             e.printStackTrace();
             throw new Exception("Erreur dans actionToDo", e);
