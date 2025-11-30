@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -84,10 +85,10 @@ public class ClasseUtilitaire {
     public static Map.Entry<String, MappingMethodClass> getRelevantMethodAndClassNames(
             Map<String, MappingMethodClass> urlsWithMappedMethodClass, File file, String url) throws Exception {
         Map.Entry<String, MappingMethodClass> result = null;
-        Matcher matcher = null;
+        Map<String,String>matcher = null;
         try {
             for (Map.Entry<String, MappingMethodClass> entry : urlsWithMappedMethodClass.entrySet()) {
-                matcher = urlMatcher(entry.getKey(), url);
+                matcher = matchUrl(entry.getKey(), url);
                 if (matcher == null) {
                     if (entry.getKey().equals(url)) {
                         result = entry;
@@ -120,6 +121,43 @@ public class ClasseUtilitaire {
         }
     }
 
+    public static Map<String, String> matchUrl(String routePattern, String actualUrl) {
+    List<String> varNames = new ArrayList<>();
+    Matcher m = Pattern.compile("\\{([^/}]+?)(\\.\\.\\.)?\\}").matcher(routePattern);
+    StringBuffer regexBuffer = new StringBuffer();
+    int lastPos = 0;
+
+    while (m.find()) {
+        regexBuffer.append(Pattern.quote(routePattern.substring(lastPos, m.start())));
+
+        String varName = m.group(1);        
+        boolean isCatchAll = m.group(2) != null;  
+        varNames.add(varName);
+
+        
+        regexBuffer.append(isCatchAll ? "(.+)" : "([^/]+)");
+
+        lastPos = m.end();
+    }
+    
+    regexBuffer.append(Pattern.quote(routePattern.substring(lastPos)));
+
+    
+    String regex = "^" + regexBuffer.toString() + "$";
+    Pattern pattern = Pattern.compile(regex);
+    Matcher matcher = pattern.matcher(actualUrl);
+
+    if (!matcher.matches()) {
+        return null; // pas de correspondance
+    }
+
+    Map<String, String> result = new LinkedHashMap<>();
+    for (int i = 0; i < varNames.size(); i++) {
+        result.put(varNames.get(i), matcher.group(i + 1));
+    }
+
+    return result;
+}
     public static int getNombreParametres(Method m) {
         return m.getParameterCount();
     }
@@ -214,10 +252,7 @@ public class ClasseUtilitaire {
             else{
                 boolean hasAnnotation = p.isAnnotationPresent(InputParam.class);
                 if(hasAnnotation){
-                    System.out.println("eeeeee ------");
                     InputParam inpParam= p.getAnnotation(InputParam.class);
-                    System.out.println("name of param: "+inpParam.paramName());
-                    System.out.println("name: "+name);
                     if(inpParam.paramName().equals(name)){
                         return p;
                     }
@@ -227,27 +262,49 @@ public class ClasseUtilitaire {
         return null;
     }
 
-    public static Object[] giveMethodParameters(Method m, HttpServletRequest req) throws Exception {
-
+    public static Object[] giveMethodParameters(Map.Entry<String, MappingMethodClass> map, HttpServletRequest req,String url) throws Exception {
+        Class<?> c = Class.forName(map.getValue().getClassName());
+        Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
         int nombreParametres = m.getParameterCount();
         Object[] objects = (nombreParametres != 0)
                 ? new Object[nombreParametres]
                 : null;
 
+        String routePattern = null;
+        routePattern = map.getKey();
+        Map<String,String> matchingUrl = null;
+        int i = 0;
+        String value = null;
         Enumeration<String> reqParams = req.getParameterNames();
         List<String> params = Collections.list(reqParams);
-
-        int i = 0;
-
-        for (String paramName : params) {
-            Parameter p = findMethodParamHavingName(m, paramName);
-            if (p != null) {
-                String value = req.getParameter(paramName);
-                objects[i] = parseStringToType(value.trim(), p.getType());
-                i++;
+        if(params.size() != 0 ){
+            for (String paramName : params) {
+                Parameter p = findMethodParamHavingName(m, paramName);
+                if (p != null) {
+                     value = req.getParameter(paramName).trim();
+                    objects[i] = parseStringToType(value, p.getType());
+                    i++;
+                }
+            }
+        }
+        else{
+            matchingUrl = matchUrl(routePattern,url);
+            for(Map.Entry<String,String> entry: matchingUrl.entrySet()){
+                
+                Parameter p = findMethodParamHavingName(m, entry.getKey());
+                if (p != null) {
+                    Parameter[] parameters= m.getParameters();
+                    value = entry.getValue().trim();
+                    for(int j = 0 ; j< m.getParameterCount();j++){
+                        if(parameters[j].getName().equals(p.getName())){
+                            objects[j]  = parseStringToType(value, p.getType());
+                        }
+                    }
+                }
             }
         }
 
         return objects;
     }
+
 }

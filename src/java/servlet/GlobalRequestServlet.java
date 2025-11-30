@@ -34,7 +34,6 @@ public class GlobalRequestServlet extends HttpServlet {
             context.setAttribute("hashmap", mappingMethodClass);
         } catch (Exception e) {
             System.out.println("Erreur d'initialisation : " + e.getMessage());
-            ;
             e.printStackTrace();
         }
     }
@@ -101,7 +100,7 @@ public class GlobalRequestServlet extends HttpServlet {
                     return;
                 }
 
-                actionToDo(urlInfo.getValue(), request, response);
+                actionToDo(urlInfo,path ,request, response);
 
             } catch (Exception e) {
 
@@ -116,12 +115,13 @@ public class GlobalRequestServlet extends HttpServlet {
         }
     }
 
-    public void actionToDo(MappingMethodClass mcc, HttpServletRequest req, HttpServletResponse res) throws Exception {
+    public void actionToDo(Map.Entry<String, MappingMethodClass> map, String url, HttpServletRequest req, HttpServletResponse res) throws Exception {
         try {
-            Class<?> c = Class.forName(mcc.getClassName());
-            Method m = ClasseUtilitaire.getMethodByNom(c, mcc.getMethodName());
-            Object[] objects = ClasseUtilitaire.giveMethodParameters(m, req);
-
+            
+            Object[] objects = ClasseUtilitaire.giveMethodParameters(map, req,url);
+           
+            Class<?> c = Class.forName(map.getValue().getClassName());
+            Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
             Object instance = c.getDeclaredConstructor().newInstance();
             Object obj = m.invoke(instance, objects);
 
