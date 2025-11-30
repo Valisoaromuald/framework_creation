@@ -13,6 +13,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import annotation.Controleur;
+import annotation.InputParam;
 import annotation.UrlMapping;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -210,6 +211,18 @@ public class ClasseUtilitaire {
             if (p.getName().equals(name)) {
                 return p;
             }
+            else{
+                boolean hasAnnotation = p.isAnnotationPresent(InputParam.class);
+                if(hasAnnotation){
+                    System.out.println("eeeeee ------");
+                    InputParam inpParam= p.getAnnotation(InputParam.class);
+                    System.out.println("name of param: "+inpParam.paramName());
+                    System.out.println("name: "+name);
+                    if(inpParam.paramName().equals(name)){
+                        return p;
+                    }
+                }
+            }
         }
         return null;
     }
@@ -230,7 +243,7 @@ public class ClasseUtilitaire {
             Parameter p = findMethodParamHavingName(m, paramName);
             if (p != null) {
                 String value = req.getParameter(paramName);
-                objects[i] = parseStringToType(value, p.getType());
+                objects[i] = parseStringToType(value.trim(), p.getType());
                 i++;
             }
         }
