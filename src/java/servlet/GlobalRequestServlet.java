@@ -92,20 +92,19 @@ public class GlobalRequestServlet extends HttpServlet {
             try {
                 Map<String, MappingMethodClass> urlsWithMappedMethodAndClass = (Map<String, MappingMethodClass>) context
                         .getAttribute("hashmap");
-                        Map.Entry<String, MappingMethodClass> urlInfo = ClasseUtilitaire
+                Map.Entry<String, MappingMethodClass> urlInfo = ClasseUtilitaire
                         .getRelevantMethodAndClassNames(urlsWithMappedMethodAndClass, root, path);
-                        if (urlInfo == null) {
-                            PrintWriter out = response.getWriter();
-                            out.println("<h1>404 - Page / Not found</h1>");
-                            out.println("Url demandée: "+path);
-                        return;
+                if (urlInfo == null) {
+                    PrintWriter out = response.getWriter();
+                    out.println("<h1>404 - Page / Not found</h1>");
+                    out.println("Url demandée: " + path);
+                    return;
                 }
 
                 actionToDo(urlInfo.getValue(), request, response);
 
             } catch (Exception e) {
 
-                
                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 response.setContentType("text/plain");
                 PrintWriter out = response.getWriter();
@@ -121,36 +120,42 @@ public class GlobalRequestServlet extends HttpServlet {
         try {
             Class<?> c = Class.forName(mcc.getClassName());
             Method m = ClasseUtilitaire.getMethodByNom(c, mcc.getMethodName());
-            int nombreParametreMethodes = ClasseUtilitaire.getNombreParametres(m);
-            Object[] objects = null;
-            if (nombreParametreMethodes != 0) {
-                objects = new Object[nombreParametreMethodes];
-                for (int i = 0; i < nombreParametreMethodes; i++) {
-                    objects[i] = ClasseUtilitaire.getDefaultValue(m.getParameters()[i].getType());
-                }
-            }
+            Object[] objects = ClasseUtilitaire.giveMethodParameters(m, req);
+
             Object instance = c.getDeclaredConstructor().newInstance();
             Object obj = m.invoke(instance, objects);
+
+            if (obj == null) {
+                obj = "";
+            }
+
             Class<?> typeRetour = m.getReturnType();
+
             if (typeRetour.equals(String.class)) {
-                res.setContentType("text/plain");
-                PrintWriter out = res.getWriter();
-                out.println(obj);
-            } else if (typeRetour.equals(ModelView.class)) {
-                res.setContentType("text/html");
-                RequestDispatcher dispat = null;
+                res.setContentType("text/plain; charset=UTF-8");
+                res.getWriter().println(obj);
+                return;
+            }
+
+            if (typeRetour==ModelView.class) {
                 ModelView mv = (ModelView) obj;
-                if (mv.getObjects().size() != 0) {
-                    for (Map.Entry<String, Object> object : mv.getObjects().entrySet()) {
-                        req.setAttribute(object.getKey(), object.getValue());
+
+                if (mv.getObjects() != null) {
+                    for (Map.Entry<String, Object> entry : mv.getObjects().entrySet()) {
+                        req.setAttribute(entry.getKey(), entry.getValue());
                     }
                 }
-                dispat = req.getRequestDispatcher("/" + mv.getView());
-                dispat.forward(req, res);
+
+                RequestDispatcher dispatcher = req.getRequestDispatcher("/" + mv.getView());
+                dispatcher.forward(req, res);
+                return;
             }
+
+            throw new Exception("Type retour non supporté : " + typeRetour.getName());
+
         } catch (Exception e) {
             e.printStackTrace();
-            throw new Exception(e.getMessage());
+            throw new Exception("Erreur dans actionToDo", e);
         }
     }
 
