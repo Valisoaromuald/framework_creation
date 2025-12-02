@@ -29,9 +29,15 @@ public class GlobalRequestServlet extends HttpServlet {
             ServletContext context = getServletContext();
             String rootPath = context.getRealPath("/");
             root = new File(rootPath);
-            Map<String, MappingMethodClass> mappingMethodClass = ClasseUtilitaire
+            Map<String, List<MappingMethodClass>> mappingMethodClass = ClasseUtilitaire
                     .generateUrlsWithMappedMethodClass(root);
             context.setAttribute("hashmap", mappingMethodClass);
+            for(Map.Entry<String, List<MappingMethodClass>> entry : mappingMethodClass.entrySet()) {
+                System.out.println("URL: " + entry.getKey()+" methodes: ");
+                for(MappingMethodClass mmc: entry.getValue()) {
+                    System.out.println("Class: " + mmc.getClassName() + ", Method: " + mmc.getMethodName() + ", HTTP Method: " + mmc.getHttpMethod());
+                }
+            }
         } catch (Exception e) {
             System.out.println("Erreur d'initialisation : " + e.getMessage());
             e.printStackTrace();
@@ -75,7 +81,8 @@ public class GlobalRequestServlet extends HttpServlet {
         String contextPath = request.getContextPath();
         String uri = request.getRequestURI();
         String path = uri.substring(contextPath.length());
-
+        String httpMethod = request.getMethod();
+        System.out.println("Requête reçue: " + httpMethod );
         if (path.equals("/") || path.isEmpty()) {
             path = "/index.html";
         }
@@ -89,10 +96,12 @@ public class GlobalRequestServlet extends HttpServlet {
             response.setContentType("text/html;charset=UTF-8");
 
             try {
-                Map<String, MappingMethodClass> urlsWithMappedMethodAndClass = (Map<String, MappingMethodClass>) context
+                Map<String, List<MappingMethodClass>> urlsWithMappedMethodAndClass = (Map<String, List<MappingMethodClass>>) context
                         .getAttribute("hashmap");
+                        
                 Map.Entry<String, MappingMethodClass> urlInfo = ClasseUtilitaire
-                        .getRelevantMethodAndClassNames(urlsWithMappedMethodAndClass, root, path);
+                        .getRelevantMethodAndClassNames(urlsWithMappedMethodAndClass, root, path,httpMethod);
+                System.out.println("inona no : "+urlInfo.getValue().getClassName());
                 if (urlInfo == null) {
                     PrintWriter out = response.getWriter();
                     out.println("<h1>404 - Page / Not found</h1>");
@@ -100,7 +109,7 @@ public class GlobalRequestServlet extends HttpServlet {
                     return;
                 }
 
-                actionToDo(urlInfo,path ,request, response);
+                actionToDo(urlInfo,path ,request, response,httpMethod);
 
             } catch (Exception e) {
 
@@ -115,9 +124,9 @@ public class GlobalRequestServlet extends HttpServlet {
         }
     }
 
-    public void actionToDo(Map.Entry<String, MappingMethodClass> map, String url, HttpServletRequest req, HttpServletResponse res) throws Exception {
+    public void actionToDo(Map.Entry<String, MappingMethodClass> map, String url, HttpServletRequest req, HttpServletResponse res,String httpMethod) throws Exception {
         try {
-            
+            System.out.println("mety ve eto aloha e: "+map.getValue().getClassName());
             Object[] objects = ClasseUtilitaire.giveMethodParameters(map, req,url);
            
             Class<?> c = Class.forName(map.getValue().getClassName());
