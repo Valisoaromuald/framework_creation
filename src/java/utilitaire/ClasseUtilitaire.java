@@ -1,11 +1,15 @@
 package utilitaire;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.text.Annotation;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -190,7 +194,6 @@ public class ClasseUtilitaire {
             }
             for (Map.Entry<String, List<MappingMethodClass>> entry : urlsWithMappedMethodClass.entrySet()) {
                 matcher = matchUrl(entry.getKey(), url);
-                System.out.println("afficheo aloha: " + entry + "url : " + url + "matcher: " + matcher);
 
                 if (matcher == null || matcher.size() == 0) {
                     if (entry.getKey().equals(url)) {
@@ -230,9 +233,6 @@ public class ClasseUtilitaire {
             }
         } catch (Exception e) {
             throw e;
-        }
-        if (result != null) {
-            System.out.println("tena tsy mankato ve" + result.getKey());
         }
         return result;
     }
@@ -401,21 +401,33 @@ public class ClasseUtilitaire {
         String value = null;
         Enumeration<String> reqParams = req.getParameterNames();
         List<String> params = Collections.list(reqParams);
+        Map<String,Object> maps = null;
         if (params.size() != 0) {
+            boolean hasMap = hasMap(m);            
+            if(hasMap){
+                maps = buildMap(req,map.getValue());
+                // System.out.println("mandeha mankato elah"+maps);
+            }
             for (String paramName : params) {
                 Parameter p = findMethodParamHavingName(m, paramName);
                 if (p != null) {
-                    value = req.getParameter(paramName).trim();
-                    objects[i] = parseStringToType(value, p.getType());
+                    Type genericType = p.getParameterizedType();
+                    if (!(genericType instanceof ParameterizedType)) {
+                        value = req.getParameter(paramName).trim();
+                        objects[i] = parseStringToType(value, p.getType());
+                    } else {
+                        objects[i] = maps;
+                    } 
                     i++;
                 }
+
             }
         } else {
             matchingUrl = matchUrl(routePattern, url);
             for (Map.Entry<String, String> entry : matchingUrl.entrySet()) {
 
                 Parameter p = findMethodParamHavingName(m, entry.getKey());
-                if (p != null) {
+                if (p != null && p.getType() == Map.class) {
                     Parameter[] parameters = m.getParameters();
                     value = entry.getValue().trim();
                     for (int j = 0; j < m.getParameterCount(); j++) {
@@ -428,6 +440,60 @@ public class ClasseUtilitaire {
         }
 
         return objects;
+    }
+
+    public static boolean hasMap(Method m) {
+        boolean response = false;
+        Parameter[] parameters = m.getParameters();
+        for (Parameter p : parameters) {
+            Type genericType = p.getParameterizedType();
+            if (genericType instanceof ParameterizedType) {
+                ParameterizedType pt = (ParameterizedType) genericType;
+                Type keyType = pt.getActualTypeArguments()[0];
+                Type valueType = pt.getActualTypeArguments()[1];
+                if(keyType == String.class && valueType == Object.class){
+                    System.out.println("manaraka norme elah");
+                    response = true;
+                    break;
+                }
+            }
+        }
+
+        return response;
+    }
+
+    public static Map<String, Object> buildMap(HttpServletRequest req,MappingMethodClass mc)throws Exception {
+        Map<String, Object> result = new HashMap<String, Object>();
+        Enumeration<String> listeParametres = req.getParameterNames();
+        List<String> paramLists = Collections.list(listeParametres); 
+        Class<?> clazz = Class.forName(mc.getClassName());
+        Field[] fields = clazz.getDeclaredFields();
+        Object tempo = null;
+        System.out.println("nom de la classe: "+clazz.getName());
+        System.out.println("fields.length: "+fields.length);
+        System.out.println("paramLists.size: "+paramLists.size());
+        String[] paramValues = null;
+        // if(paramLists.size() == fields.length){
+            for(int i = 0 ; i < paramLists.size();i++){
+                System.out.println("noms parametres requette: "+paramLists.get(i));
+                // System.out.println("noms parametres : "+fields[i].getName());
+                // if(paramLists.get(i).equals(fields[i].getName())){
+                    paramValues = req.getParameterValues(paramLists.get(i));
+                    if(paramValues.length == 1 ){
+                        result.put(paramLists.get(i), paramValues[0]);
+                    }else{
+                        result.put(paramLists.get(i), Arrays.asList(paramValues));
+                    }
+                // }
+                // else{
+                //     throw new Exception("les noms des parametres ne correspondent pas");
+                // }
+            // }
+        }
+        // else{
+        //     throw new Exception("le nombre de parametres de la methode doit etre egal à au nombre de parametres dans la requete");
+        // }
+        return result;
     }
 
 }
