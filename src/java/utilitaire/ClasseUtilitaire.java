@@ -386,7 +386,7 @@ public class ClasseUtilitaire {
     }
 
     public static Object[] giveMethodParameters(Map.Entry<String, MappingMethodClass> map, HttpServletRequest req,
-            String url) throws Exception {
+            String url, List<String> classes) throws Exception {
         Class<?> c = Class.forName(map.getValue().getClassName());
         Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
         int nombreParametres = m.getParameterCount();
@@ -401,31 +401,29 @@ public class ClasseUtilitaire {
         String value = null;
         Enumeration<String> reqParams = req.getParameterNames();
         List<String> params = Collections.list(reqParams);
-        Map<String,Object> maps = null;
+        Map<String, Object> maps = null;
         if (params.size() != 0) {
-            boolean hasMap = hasMap(m);            
-            if(hasMap){
-                maps = buildMap(req,map.getValue());
-                // System.out.println("mandeha mankato elah"+maps);
+            boolean hasMap = Sprint8.hasMap(m);
+            if (hasMap) {
+                maps = Sprint8.buildMap(req, map.getValue(), classes);
             }
-            for (String paramName : params) {
-                Parameter p = findMethodParamHavingName(m, paramName);
-                if (p != null) {
-                    Type genericType = p.getParameterizedType();
-                    if (!(genericType instanceof ParameterizedType)) {
-                        value = req.getParameter(paramName).trim();
-                        objects[i] = parseStringToType(value, p.getType());
-                    } else {
-                        objects[i] = maps;
-                    } 
-                    i++;
+            for (Parameter p : m.getParameters()) {
+                String reqParamName = Sprint8.getAppropriateRequestParamName(p, params);
+                if (reqParamName != null) {
+                    value = req.getParameter(reqParamName).trim();
+                    objects[i] = parseStringToType(value, p.getType());
                 }
-
+                else {
+                    if (maps != null) {
+                        objects[i] = maps;
+                    }
+                }
+                i++;
             }
+
         } else {
             matchingUrl = matchUrl(routePattern, url);
             for (Map.Entry<String, String> entry : matchingUrl.entrySet()) {
-
                 Parameter p = findMethodParamHavingName(m, entry.getKey());
                 if (p != null && p.getType() == Map.class) {
                     Parameter[] parameters = m.getParameters();
@@ -440,60 +438,6 @@ public class ClasseUtilitaire {
         }
 
         return objects;
-    }
-
-    public static boolean hasMap(Method m) {
-        boolean response = false;
-        Parameter[] parameters = m.getParameters();
-        for (Parameter p : parameters) {
-            Type genericType = p.getParameterizedType();
-            if (genericType instanceof ParameterizedType) {
-                ParameterizedType pt = (ParameterizedType) genericType;
-                Type keyType = pt.getActualTypeArguments()[0];
-                Type valueType = pt.getActualTypeArguments()[1];
-                if(keyType == String.class && valueType == Object.class){
-                    System.out.println("manaraka norme elah");
-                    response = true;
-                    break;
-                }
-            }
-        }
-
-        return response;
-    }
-
-    public static Map<String, Object> buildMap(HttpServletRequest req,MappingMethodClass mc)throws Exception {
-        Map<String, Object> result = new HashMap<String, Object>();
-        Enumeration<String> listeParametres = req.getParameterNames();
-        List<String> paramLists = Collections.list(listeParametres); 
-        Class<?> clazz = Class.forName(mc.getClassName());
-        Field[] fields = clazz.getDeclaredFields();
-        Object tempo = null;
-        System.out.println("nom de la classe: "+clazz.getName());
-        System.out.println("fields.length: "+fields.length);
-        System.out.println("paramLists.size: "+paramLists.size());
-        String[] paramValues = null;
-        // if(paramLists.size() == fields.length){
-            for(int i = 0 ; i < paramLists.size();i++){
-                System.out.println("noms parametres requette: "+paramLists.get(i));
-                // System.out.println("noms parametres : "+fields[i].getName());
-                // if(paramLists.get(i).equals(fields[i].getName())){
-                    paramValues = req.getParameterValues(paramLists.get(i));
-                    if(paramValues.length == 1 ){
-                        result.put(paramLists.get(i), paramValues[0]);
-                    }else{
-                        result.put(paramLists.get(i), Arrays.asList(paramValues));
-                    }
-                // }
-                // else{
-                //     throw new Exception("les noms des parametres ne correspondent pas");
-                // }
-            // }
-        }
-        // else{
-        //     throw new Exception("le nombre de parametres de la methode doit etre egal à au nombre de parametres dans la requete");
-        // }
-        return result;
     }
 
 }

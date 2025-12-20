@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.naming.Context;
+
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -18,6 +20,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import utilitaire.ClasseUtilitaire;
 import utilitaire.MappingMethodClass;
 import utilitaire.ModelView;
+import utilitaire.Sprint8;
 import jakarta.servlet.ServletContext;
 
 public class GlobalRequestServlet extends HttpServlet {
@@ -32,6 +35,12 @@ public class GlobalRequestServlet extends HttpServlet {
             Map<String, List<MappingMethodClass>> mappingMethodClass = ClasseUtilitaire
                     .generateUrlsWithMappedMethodClass(root);
             context.setAttribute("hashmap", mappingMethodClass);
+            context.setAttribute("rootPath",root);
+            System.out.println("classe avec des attributs: ");
+            List<Class<?>> classes = Sprint8.getClassesWithFields(ClasseUtilitaire.findAllClassNames(root,""));
+            for(Class<?> clazz : classes){
+                System.out.println(clazz.getName());
+            }
         } catch (Exception e) {
             System.out.println("Erreur d'initialisation : " + e.getMessage());
             e.printStackTrace();
@@ -118,7 +127,10 @@ public class GlobalRequestServlet extends HttpServlet {
 
     public void actionToDo(Map.Entry<String, MappingMethodClass> map, String url, HttpServletRequest req, HttpServletResponse res,String httpMethod) throws Exception {
         try {
-            Object[] objects = ClasseUtilitaire.giveMethodParameters(map, req,url);
+            ServletContext context = getServletContext();
+            File rootDir =  (File) context.getAttribute("rootPath");
+            List<String> classesNames = ClasseUtilitaire.findAllClassNames(rootDir,"");
+            Object[] objects = ClasseUtilitaire.giveMethodParameters(map, req,url,classesNames);
             Class<?> c = Class.forName(map.getValue().getClassName());
             Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
             Object instance = c.getDeclaredConstructor().newInstance();
