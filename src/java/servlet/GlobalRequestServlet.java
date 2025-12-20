@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.naming.Context;
+
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -18,6 +20,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import utilitaire.ClasseUtilitaire;
 import utilitaire.MappingMethodClass;
 import utilitaire.ModelView;
+import utilitaire.Sprint8;
 import jakarta.servlet.ServletContext;
 
 public class GlobalRequestServlet extends HttpServlet {
@@ -32,11 +35,11 @@ public class GlobalRequestServlet extends HttpServlet {
             Map<String, List<MappingMethodClass>> mappingMethodClass = ClasseUtilitaire
                     .generateUrlsWithMappedMethodClass(root);
             context.setAttribute("hashmap", mappingMethodClass);
-            for(Map.Entry<String, List<MappingMethodClass>> entry : mappingMethodClass.entrySet()) {
-                System.out.println("URL: " + entry.getKey()+" methodes: ");
-                for(MappingMethodClass mmc: entry.getValue()) {
-                    System.out.println("Class: " + mmc.getClassName() + ", Method: " + mmc.getMethodName() + ", HTTP Method: " + mmc.getHttpMethod());
-                }
+            context.setAttribute("rootPath",root);
+            System.out.println("classe avec des attributs: ");
+            List<Class<?>> classes = Sprint8.getClassesWithFields(ClasseUtilitaire.findAllClassNames(root,""));
+            for(Class<?> clazz : classes){
+                System.out.println(clazz.getName());
             }
         } catch (Exception e) {
             System.out.println("Erreur d'initialisation : " + e.getMessage());
@@ -82,7 +85,6 @@ public class GlobalRequestServlet extends HttpServlet {
         String uri = request.getRequestURI();
         String path = uri.substring(contextPath.length());
         String httpMethod = request.getMethod();
-        System.out.println("Requête reçue: " + httpMethod );
         if (path.equals("/") || path.isEmpty()) {
             path = "/index.html";
         }
@@ -101,7 +103,6 @@ public class GlobalRequestServlet extends HttpServlet {
                         
                 Map.Entry<String, MappingMethodClass> urlInfo = ClasseUtilitaire
                         .getRelevantMethodAndClassNames(urlsWithMappedMethodAndClass, root, path,httpMethod);
-                System.out.println("inona no : "+urlInfo.getValue().getClassName());
                 if (urlInfo == null) {
                     PrintWriter out = response.getWriter();
                     out.println("<h1>404 - Page / Not found</h1>");
@@ -126,14 +127,14 @@ public class GlobalRequestServlet extends HttpServlet {
 
     public void actionToDo(Map.Entry<String, MappingMethodClass> map, String url, HttpServletRequest req, HttpServletResponse res,String httpMethod) throws Exception {
         try {
-            System.out.println("mety ve eto aloha e: "+map.getValue().getClassName());
-            Object[] objects = ClasseUtilitaire.giveMethodParameters(map, req,url);
-           
+            ServletContext context = getServletContext();
+            File rootDir =  (File) context.getAttribute("rootPath");
+            List<String> classesNames = ClasseUtilitaire.findAllClassNames(rootDir,"");
+            Object[] objects = ClasseUtilitaire.giveMethodParameters(map, req,url,classesNames);
             Class<?> c = Class.forName(map.getValue().getClassName());
             Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
             Object instance = c.getDeclaredConstructor().newInstance();
-            Object obj = m.invoke(instance, objects);
-
+            Object obj = m.invoke(instance, objects);            
             if (obj == null) {
                 obj = "";
             }
@@ -145,7 +146,7 @@ public class GlobalRequestServlet extends HttpServlet {
                 PrintWriter out = res.getWriter();
                 out.println(obj);
             } else if (typeRetour.equals(ModelView.class)) {
-                res.setContentType("text/html");
+            res.setContentType("text/html");
                 RequestDispatcher dispat = null;
                 ModelView mv = (ModelView) obj;
 
@@ -161,7 +162,7 @@ public class GlobalRequestServlet extends HttpServlet {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            throw new Exception("Erreur dans actionToDo", e);
+            throw new Exception("Erreur dans actionToDo:"+ e.getMessage());
         }
     }
 

@@ -1,11 +1,15 @@
 package utilitaire;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.text.Annotation;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -190,7 +194,6 @@ public class ClasseUtilitaire {
             }
             for (Map.Entry<String, List<MappingMethodClass>> entry : urlsWithMappedMethodClass.entrySet()) {
                 matcher = matchUrl(entry.getKey(), url);
-                System.out.println("afficheo aloha: " + entry + "url : " + url + "matcher: " + matcher);
 
                 if (matcher == null || matcher.size() == 0) {
                     if (entry.getKey().equals(url)) {
@@ -230,9 +233,6 @@ public class ClasseUtilitaire {
             }
         } catch (Exception e) {
             throw e;
-        }
-        if (result != null) {
-            System.out.println("tena tsy mankato ve" + result.getKey());
         }
         return result;
     }
@@ -386,7 +386,7 @@ public class ClasseUtilitaire {
     }
 
     public static Object[] giveMethodParameters(Map.Entry<String, MappingMethodClass> map, HttpServletRequest req,
-            String url) throws Exception {
+            String url, List<String> classes) throws Exception {
         Class<?> c = Class.forName(map.getValue().getClassName());
         Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
         int nombreParametres = m.getParameterCount();
@@ -401,21 +401,31 @@ public class ClasseUtilitaire {
         String value = null;
         Enumeration<String> reqParams = req.getParameterNames();
         List<String> params = Collections.list(reqParams);
+        Map<String, Object> maps = null;
         if (params.size() != 0) {
-            for (String paramName : params) {
-                Parameter p = findMethodParamHavingName(m, paramName);
-                if (p != null) {
-                    value = req.getParameter(paramName).trim();
-                    objects[i] = parseStringToType(value, p.getType());
-                    i++;
-                }
+            boolean hasMap = Sprint8.hasMap(m);
+            if (hasMap) {
+                maps = Sprint8.buildMap(req, map.getValue(), classes);
             }
+            for (Parameter p : m.getParameters()) {
+                String reqParamName = Sprint8.getAppropriateRequestParamName(p, params);
+                if (reqParamName != null) {
+                    value = req.getParameter(reqParamName).trim();
+                    objects[i] = parseStringToType(value, p.getType());
+                }
+                else {
+                    if (maps != null) {
+                        objects[i] = maps;
+                    }
+                }
+                i++;
+            }
+
         } else {
             matchingUrl = matchUrl(routePattern, url);
             for (Map.Entry<String, String> entry : matchingUrl.entrySet()) {
-
                 Parameter p = findMethodParamHavingName(m, entry.getKey());
-                if (p != null) {
+                if (p != null && p.getType() == Map.class) {
                     Parameter[] parameters = m.getParameters();
                     value = entry.getValue().trim();
                     for (int j = 0; j < m.getParameterCount(); j++) {
