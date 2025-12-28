@@ -25,7 +25,7 @@ import annotation.InputParam;
 import annotation.PostHttp;
 import annotation.UrlMapping;
 
-import jakarta.servlet.http.HttpServletRequest;
+    import jakarta.servlet.http.HttpServletRequest;
 
 public class ClasseUtilitaire {
     public static List<String> findAllClassNames(File rootDir, String packageName) throws ClassNotFoundException {
@@ -63,7 +63,6 @@ public class ClasseUtilitaire {
                     break;
                 }
             } catch (ClassNotFoundException e) {
-
             }
             cpt--;
         }
@@ -188,19 +187,20 @@ public class ClasseUtilitaire {
         Map.Entry<String, MappingMethodClass> result = null;
         boolean checked = false;
         Map<String, String> matcher = null;
+        System.out.println("methode http: "+httpMethod);
         try {
             if ((url).isEmpty() || (httpMethod).isEmpty()) {
                 throw new Exception("url ou httpMethod est vide");
             }
             for (Map.Entry<String, List<MappingMethodClass>> entry : urlsWithMappedMethodClass.entrySet()) {
                 matcher = matchUrl(entry.getKey(), url);
-
                 if (matcher == null || matcher.size() == 0) {
                     if (entry.getKey().equals(url)) {
                         for (MappingMethodClass mmc : entry.getValue()) {
                             if (mmc.getHttpMethod().equals(httpMethod)) {
                                 checked = true;
                                 result = new AbstractMap.SimpleEntry<>(entry.getKey(), mmc);
+                                break;
                             }
                         }
                         if (!checked) {
@@ -213,6 +213,7 @@ public class ClasseUtilitaire {
                     }
 
                 } else {
+                    System.out.println("babason");
                     for (MappingMethodClass mmc : entry.getValue()) {
                         if (mmc.getHttpMethod().equals(httpMethod)) {
                             checked = true;
@@ -228,6 +229,7 @@ public class ClasseUtilitaire {
                     }
                 }
             }
+            System.out.println("result: "+result);
             if (result == null) {
                 throw new Exception("Aucune méthode trouvée pour l'url et la méthode HTTP spécifiées.");
             }
@@ -385,6 +387,11 @@ public class ClasseUtilitaire {
         return null;
     }
 
+    public static List<String> getHttpParameters(HttpServletRequest req){
+        Enumeration<String> reqParams = req.getParameterNames();
+        List<String> params = Collections.list(reqParams);
+        return params;
+    }
     public static Object[] giveMethodParameters(Map.Entry<String, MappingMethodClass> map, HttpServletRequest req,
             String url, List<String> classes) throws Exception {
         Class<?> c = Class.forName(map.getValue().getClassName());
@@ -393,14 +400,12 @@ public class ClasseUtilitaire {
         Object[] objects = (nombreParametres != 0)
                 ? new Object[nombreParametres]
                 : null;
-
         String routePattern = null;
         routePattern = map.getKey();
         Map<String, String> matchingUrl = null;
         int i = 0;
         String value = null;
-        Enumeration<String> reqParams = req.getParameterNames();
-        List<String> params = Collections.list(reqParams);
+        List<String> params = getHttpParameters(req);
         Map<String, Object> maps = null;
         if (params.size() != 0) {
             boolean hasMap = Sprint8.hasMap(m);
@@ -411,9 +416,15 @@ public class ClasseUtilitaire {
                 String reqParamName = Sprint8.getAppropriateRequestParamName(p, params);
                 if (reqParamName != null) {
                     value = req.getParameter(reqParamName).trim();
-                    objects[i] = parseStringToType(value, p.getType());
+                    if(Sprint8Bis.isJavaClass(p.getType())){
+                        objects[i] = parseStringToType(value, p.getType());
+                    }
                 }
                 else {
+                    Class<?> clazz = p.getType();
+                    if(!Sprint8Bis.isJavaClass(clazz)){
+                        objects[i] = Sprint8Bis.configurerValeursAttributs("",0,null,clazz, req);
+                    }
                     if (maps != null) {
                         objects[i] = maps;
                     }

@@ -19,6 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
 public class Sprint8 {
 
     public static boolean hasMap(Method m) {
+        System.out.println("afficahge de la methode: "+m.getName());
         boolean response = false;
         Parameter[] parameters = m.getParameters();
         for (Parameter p : parameters) {
@@ -105,6 +106,5 @@ public class Sprint8 {
             }
         }
         return null;
-
     }
 }

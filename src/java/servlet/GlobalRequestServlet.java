@@ -36,11 +36,7 @@ public class GlobalRequestServlet extends HttpServlet {
                     .generateUrlsWithMappedMethodClass(root);
             context.setAttribute("hashmap", mappingMethodClass);
             context.setAttribute("rootPath",root);
-            System.out.println("classe avec des attributs: ");
             List<Class<?>> classes = Sprint8.getClassesWithFields(ClasseUtilitaire.findAllClassNames(root,""));
-            for(Class<?> clazz : classes){
-                System.out.println(clazz.getName());
-            }
         } catch (Exception e) {
             System.out.println("Erreur d'initialisation : " + e.getMessage());
             e.printStackTrace();
