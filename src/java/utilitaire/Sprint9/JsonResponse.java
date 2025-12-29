@@ -1,37 +1,37 @@
 package utilitaire.Sprint9;
 
 import java.util.List;
+import java.util.List;
+import java.util.Map;
 
 public class JsonResponse<T> {
 
-    private String status; // "success" ou "error"
-    private int code;      // code HTTP
-    private T result;      // objet unique ou liste
-    private Integer count; // optionnel : seulement pour les listes
+    private String status;
+    private int code;
+    private Object result;   // IMPORTANT : Object, pas T
+    private Integer count;
 
-    public JsonResponse(String status, int code, T result) {
+    public JsonResponse(String status, int code, T data) {
         this.status = status;
         this.code = code;
 
-        if (result instanceof List) {
-            this.result = result;
-            this.count = ((List<?>) result).size();
-        } else {
-            this.result = result;
+        if (data == null) {
+            // Force {} en JSON
+            this.result = Map.of();
+        } 
+        else if (data instanceof List<?> list) {
+            this.result = list;
+            if (!list.isEmpty()) {
+                this.count = list.size();
+            }
+        } 
+        else {
+            this.result = data;
         }
     }
 
-    // Getters et setters
     public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-
     public int getCode() { return code; }
-    public void setCode(int code) { this.code = code; }
-
-    public T getResult() { return result; }
-    public void setResult(T result) { this.result = result; }
-
+    public Object getResult() { return result; }
     public Integer getCount() { return count; }
-    public void setCount(Integer count) { this.count = count; }
 }
-

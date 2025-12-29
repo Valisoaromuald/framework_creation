@@ -3,6 +3,7 @@ package servlet;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.text.Annotation;
@@ -105,7 +106,9 @@ public class GlobalRequestServlet extends HttpServlet {
                 Map<String, List<MappingMethodClass>> urlsWithMappedMethodAndClass = (Map<String, List<MappingMethodClass>>) context
                         .getAttribute("hashmap");
 
+
                 Map.Entry<String, MappingMethodClass> urlInfo = ClasseUtilitaire
+                        .getRelevantMethodAndClassNames(urlsWithMappedMethodAndClass, root, path, httpMethod);
                         .getRelevantMethodAndClassNames(urlsWithMappedMethodAndClass, root, path, httpMethod);
                 if (urlInfo == null) {
                     PrintWriter out = response.getWriter();
@@ -114,6 +117,7 @@ public class GlobalRequestServlet extends HttpServlet {
                     return;
                 }
 
+                actionToDo(urlInfo, path, request, response);
                 actionToDo(urlInfo, path, request, response);
 
             } catch (Exception e) {
@@ -140,10 +144,6 @@ public class GlobalRequestServlet extends HttpServlet {
             Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
             Object instance = c.getDeclaredConstructor().newInstance();
             Object obj = m.invoke(instance, objects);
-            if (obj == null) {
-                obj = "";
-            }
-
             Class<?> typeRetour = m.getReturnType();
 
             if (typeRetour.equals(String.class)) {
@@ -165,13 +165,10 @@ public class GlobalRequestServlet extends HttpServlet {
                 dispatcher.forward(req, res);
                 return;
             } else {
-                if (m != null) {
-                    System.out.println(m.getName());
+                if (m != null) {                    
                     Json jsonAnnotation = m.getAnnotation(Json.class);
-                    System.out.println(jsonAnnotation);
                     if (jsonAnnotation != null) {
                         try {
-                            // Si la méthode a l'annotation @Json
                             JsonResponse<Object> jsonResponse = new JsonResponse<>("success", res.getStatus(), obj);
                             writeJson(res, jsonResponse);
 
@@ -184,6 +181,14 @@ public class GlobalRequestServlet extends HttpServlet {
                 }
 
             }
+        } catch (InvocationTargetException ite) {
+            Throwable cause = ite.getCause(); // <-- vraie exception du contrôleur
+            cause.printStackTrace();
+            res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+
+            JsonResponse<Object> errorResponse = new JsonResponse<>("error", res.getStatus(), cause.getMessage());
+
+            writeJson(res, errorResponse);
         } catch (
 
         Exception e) {
