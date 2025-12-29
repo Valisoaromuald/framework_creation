@@ -1,12 +1,14 @@
 package utilitaire;
 
 import java.io.File;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.text.Annotation;
+// import java.text.Annotation;
+import java.nio.file.Path;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,6 +28,7 @@ import annotation.PostHttp;
 import annotation.UrlMapping;
 
 import jakarta.servlet.http.HttpServletRequest;
+import servlet.GlobalRequestServlet;
 
 public class ClasseUtilitaire {
     public static List<String> findAllClassNames(File rootDir, String packageName) throws ClassNotFoundException {
@@ -67,6 +70,7 @@ public class ClasseUtilitaire {
             }
             cpt--;
         }
+        System.out.println("misy olana sahady:" + classe);
         return classe;
     }
 
@@ -82,8 +86,8 @@ public class ClasseUtilitaire {
             Class<?> clazz = createClass(className);
             if (clazz != null) {
                 if (clazz.isAnnotationPresent(Controleur.class)) {
-                    Method[] methodes = ArrangerMethodClass(clazz);
-                    for (Method m : methodes) {
+                    // Method[] methodes = ArrangerMethodClass(clazz);
+                    for (Method m : clazz.getDeclaredMethods()) {
                         annotation = null;
                         methodName = null;
                         if (m.isAnnotationPresent(UrlMapping.class)) {
@@ -116,55 +120,7 @@ public class ClasseUtilitaire {
         return results;
     }
 
-    public static Method[] ArrangerMethodClass(Class<?> clazz) {
-        Method[] methods = clazz.getDeclaredMethods();
-        Method[] arrangedMethods = new Method[methods.length];
-        List<String> urls = new ArrayList<String>();
-        int i = 0;
-        String urlTempo = null;
-        for (Method m : methods) {
-            if (m.isAnnotationPresent(UrlMapping.class)) {
-                urlTempo = m.getAnnotation(UrlMapping.class).url();
-                if (!urls.contains(urlTempo)) {
-                    urls.add(urlTempo);
-                }
-            } else if (m.isAnnotationPresent(GetHttp.class)) {
-                urlTempo = m.getAnnotation(GetHttp.class).url();
-                if (!urls.contains(urlTempo)) {
-                    urls.add(urlTempo);
-                }
-            } else if (m.isAnnotationPresent(PostHttp.class)) {
-                urlTempo = m.getAnnotation(PostHttp.class).url();
-                if (!urls.contains(urlTempo)) {
-                    urls.add(urlTempo);
-                }
-            }
-        }
-        for (String u : urls) {
-            for (Method m : methods) {
-                if (m.isAnnotationPresent(UrlMapping.class)) {
-                    urlTempo = m.getAnnotation(UrlMapping.class).url();
-                    if (u.equals(urlTempo)) {
-                        arrangedMethods[i] = m;
-                        i++;
-                    }
-                } else if (m.isAnnotationPresent(GetHttp.class)) {
-                    urlTempo = m.getAnnotation(GetHttp.class).url();
-                    if (u.equals(urlTempo)) {
-                        arrangedMethods[i] = m;
-                        i++;
-                    }
-                } else if (m.isAnnotationPresent(PostHttp.class)) {
-                    urlTempo = m.getAnnotation(PostHttp.class).url();
-                    if (u.equals(urlTempo)) {
-                        arrangedMethods[i] = m;
-                        i++;
-                    }
-                }
-            }
-        }
-        return arrangedMethods;
-    }
+
 
     public static Map.Entry<String, MappingMethodClass> getRelevantMethodAndClassNames(
             Map<String, List<MappingMethodClass>> urlsWithMappedMethodClass, File file, String url, String httpMethod)
@@ -373,10 +329,9 @@ public class ClasseUtilitaire {
             if (p.getName().equals(name)) {
                 return p;
             } else {
-                boolean hasAnnotation = p.isAnnotationPresent(InputParam.class);
-                if (hasAnnotation) {
-                    InputParam inpParam = p.getAnnotation(InputParam.class);
-                    if (inpParam.paramName().equals(name)) {
+                InputParam inputParamAnnotation = getSpecificAnnotation(p, InputParam.class);
+                if (inputParamAnnotation != null) {
+                    if (inputParamAnnotation.paramName().equals(name)) {
                         return p;
                     }
                 }
@@ -385,7 +340,14 @@ public class ClasseUtilitaire {
         return null;
     }
 
-    public static Object[] giveMethodParameters(Map.Entry<String, MappingMethodClass> map, HttpServletRequest req,
+    public static <T extends Annotation> T getSpecificAnnotation(
+            Parameter p, Class<T> annotationClass) {
+        return p.getAnnotation(annotationClass);
+    }
+
+    public static Object[] giveMethodParameters(
+            Object instance, Path uploadFolder,
+            Map.Entry<String, MappingMethodClass> map, HttpServletRequest req,
             String url, List<String> classes) throws Exception {
         Class<?> c = Class.forName(map.getValue().getClassName());
         Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
@@ -401,20 +363,27 @@ public class ClasseUtilitaire {
         String value = null;
         Enumeration<String> reqParams = req.getParameterNames();
         List<String> params = Collections.list(reqParams);
-        Map<String, Object> maps = null;
-        if (params.size() != 0) {
-            boolean hasMap = Sprint8.hasMap(m);
-            if (hasMap) {
-                maps = Sprint8.buildMap(req, map.getValue(), classes);
-            }
+        Object maps = null;
+        boolean hasAttachedFiles = false;
+        if(GlobalRequestServlet.isMultiPart(req)){
+            hasAttachedFiles = GlobalRequestServlet.hasAttachedFiles(req);
+        }
+        if (params.size() != 0 || hasAttachedFiles) {
+            maps = Sprint8.buildMap(req, map.getValue(), classes);
             for (Parameter p : m.getParameters()) {
                 String reqParamName = Sprint8.getAppropriateRequestParamName(p, params);
                 if (reqParamName != null) {
                     value = req.getParameter(reqParamName).trim();
                     objects[i] = parseStringToType(value, p.getType());
-                }
-                else {
+                } else {
                     if (maps != null) {
+                        Field uploadField = Sprint10.FieldForUpload(c);
+                        if (uploadField != null) {
+                            String fname = uploadField.getName();
+                            String realFieldName = fname.substring(0, 1).toUpperCase() + fname.substring(1);
+                            Method method = c.getMethod("set" + realFieldName, uploadField.getType());
+                            method.invoke(instance, uploadFolder);
+                        }
                         objects[i] = maps;
                     }
                 }
@@ -425,7 +394,7 @@ public class ClasseUtilitaire {
             matchingUrl = matchUrl(routePattern, url);
             for (Map.Entry<String, String> entry : matchingUrl.entrySet()) {
                 Parameter p = findMethodParamHavingName(m, entry.getKey());
-                if (p != null && p.getType() == Map.class) {
+                if (p != null && p.getType() != Map.class) {
                     Parameter[] parameters = m.getParameters();
                     value = entry.getValue().trim();
                     for (int j = 0; j < m.getParameterCount(); j++) {

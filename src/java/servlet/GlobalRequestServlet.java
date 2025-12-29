@@ -5,10 +5,13 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import jakarta.servlet.http.Part;
 
 import javax.naming.Context;
 
@@ -22,7 +25,9 @@ import utilitaire.MappingMethodClass;
 import utilitaire.ModelView;
 import utilitaire.Sprint8;
 import jakarta.servlet.ServletContext;
+import jakarta.servlet.annotation.MultipartConfig;
 
+@MultipartConfig
 public class GlobalRequestServlet extends HttpServlet {
     private File root;
 
@@ -32,15 +37,14 @@ public class GlobalRequestServlet extends HttpServlet {
             ServletContext context = getServletContext();
             String rootPath = context.getRealPath("/");
             root = new File(rootPath);
+            String uploadFolderName = rootPath + "uploads";
+            Path uploadFolder = Paths.get(uploadFolderName);
             Map<String, List<MappingMethodClass>> mappingMethodClass = ClasseUtilitaire
                     .generateUrlsWithMappedMethodClass(root);
             context.setAttribute("hashmap", mappingMethodClass);
-            context.setAttribute("rootPath",root);
-            System.out.println("classe avec des attributs: ");
-            List<Class<?>> classes = Sprint8.getClassesWithFields(ClasseUtilitaire.findAllClassNames(root,""));
-            for(Class<?> clazz : classes){
-                System.out.println(clazz.getName());
-            }
+            context.setAttribute("rootPath", root);
+            context.setAttribute("uploadFolder", uploadFolder);
+            List<Class<?>> classes = Sprint8.getClassesWithFields(ClasseUtilitaire.findAllClassNames(root, ""));
         } catch (Exception e) {
             System.out.println("Erreur d'initialisation : " + e.getMessage());
             e.printStackTrace();
@@ -100,9 +104,9 @@ public class GlobalRequestServlet extends HttpServlet {
             try {
                 Map<String, List<MappingMethodClass>> urlsWithMappedMethodAndClass = (Map<String, List<MappingMethodClass>>) context
                         .getAttribute("hashmap");
-                        
+
                 Map.Entry<String, MappingMethodClass> urlInfo = ClasseUtilitaire
-                        .getRelevantMethodAndClassNames(urlsWithMappedMethodAndClass, root, path,httpMethod);
+                        .getRelevantMethodAndClassNames(urlsWithMappedMethodAndClass, root, path, httpMethod);
                 if (urlInfo == null) {
                     PrintWriter out = response.getWriter();
                     out.println("<h1>404 - Page / Not found</h1>");
@@ -110,7 +114,7 @@ public class GlobalRequestServlet extends HttpServlet {
                     return;
                 }
 
-                actionToDo(urlInfo,path ,request, response,httpMethod);
+                actionToDo(urlInfo, path, request, response);
 
             } catch (Exception e) {
 
@@ -125,16 +129,41 @@ public class GlobalRequestServlet extends HttpServlet {
         }
     }
 
-    public void actionToDo(Map.Entry<String, MappingMethodClass> map, String url, HttpServletRequest req, HttpServletResponse res,String httpMethod) throws Exception {
+    public static boolean hasAttachedFiles(HttpServletRequest req) throws Exception {
+        return req.getParts() != null && req.getParts().size() != 0;
+    }
+    public static boolean isMultiPart(HttpServletRequest request) {
+        String contentType = request.getContentType();
+        return contentType != null && contentType.toLowerCase().startsWith("multipart/");
+    }
+
+    public static Map<String, byte[]> buildMapForFile(HttpServletRequest req) throws Exception {
+        Map<String, byte[]> result = new HashMap<String, byte[]>();
+        for (Part part : req.getParts()) {
+
+            String fileName = part.getSubmittedFileName();
+            if (fileName == null || fileName.isBlank()) {
+                continue;
+            }
+            byte[] data = part.getInputStream().readAllBytes();
+            result.put(fileName, data);
+        }
+        return result;
+    }
+
+    public void actionToDo(Map.Entry<String, MappingMethodClass> map, String url, HttpServletRequest req,
+            HttpServletResponse res) throws Exception {
         try {
             ServletContext context = getServletContext();
-            File rootDir =  (File) context.getAttribute("rootPath");
-            List<String> classesNames = ClasseUtilitaire.findAllClassNames(rootDir,"");
-            Object[] objects = ClasseUtilitaire.giveMethodParameters(map, req,url,classesNames);
+            File rootDir = (File) context.getAttribute("rootPath");
+            Path uploadFolder = (Path) context.getAttribute("uploadFolder");
+            List<String> classesNames = ClasseUtilitaire.findAllClassNames(rootDir, "");
             Class<?> c = Class.forName(map.getValue().getClassName());
-            Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
             Object instance = c.getDeclaredConstructor().newInstance();
-            Object obj = m.invoke(instance, objects);            
+            Object[] objects = ClasseUtilitaire.giveMethodParameters(instance, uploadFolder, map, req, url,
+                    classesNames);
+            Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
+            Object obj = m.invoke(instance, objects);
             if (obj == null) {
                 obj = "";
             }
@@ -146,7 +175,7 @@ public class GlobalRequestServlet extends HttpServlet {
                 PrintWriter out = res.getWriter();
                 out.println(obj);
             } else if (typeRetour.equals(ModelView.class)) {
-            res.setContentType("text/html");
+                res.setContentType("text/html");
                 RequestDispatcher dispat = null;
                 ModelView mv = (ModelView) obj;
 
@@ -155,14 +184,13 @@ public class GlobalRequestServlet extends HttpServlet {
                         req.setAttribute(entry.getKey(), entry.getValue());
                     }
                 }
-
                 RequestDispatcher dispatcher = req.getRequestDispatcher("/" + mv.getView());
                 dispatcher.forward(req, res);
                 return;
             }
         } catch (Exception e) {
             e.printStackTrace();
-            throw new Exception("Erreur dans actionToDo:"+ e.getMessage());
+            throw new Exception("Erreur dans actionToDo:" + e.getMessage());
         }
     }
 
