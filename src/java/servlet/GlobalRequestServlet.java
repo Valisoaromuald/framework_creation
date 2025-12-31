@@ -36,10 +36,15 @@ public class GlobalRequestServlet extends HttpServlet {
                     .generateUrlsWithMappedMethodClass(root);
             context.setAttribute("hashmap", mappingMethodClass);
             context.setAttribute("rootPath",root);
-            System.out.println("classe avec des attributs: ");
-            List<Class<?>> classes = Sprint8.getClassesWithFields(ClasseUtilitaire.findAllClassNames(root,""));
-            for(Class<?> clazz : classes){
-                System.out.println(clazz.getName());
+            for( Map.Entry<String, List<MappingMethodClass>> mmc : mappingMethodClass.entrySet()){
+                System.out.print("url:"+mmc.getKey()+" ");
+                for(MappingMethodClass mp :mmc.getValue()){
+                    System.out.print("classe:"+mp.getClassName()+" ");
+                    System.out.print("methode:"+mp.getMethodName()+" ");
+                    System.out.print("http method:"+mp.getHttpMethod()+" ");
+                    System.out.println("//////////////////////////////");
+                }
+                System.out.println("---------");
             }
         } catch (Exception e) {
             System.out.println("Erreur d'initialisation : " + e.getMessage());
@@ -110,7 +115,7 @@ public class GlobalRequestServlet extends HttpServlet {
                     return;
                 }
 
-                actionToDo(urlInfo,path ,request, response,httpMethod);
+                actionToDo(urlInfo,path ,request, response);
 
             } catch (Exception e) {
 
@@ -125,7 +130,7 @@ public class GlobalRequestServlet extends HttpServlet {
         }
     }
 
-    public void actionToDo(Map.Entry<String, MappingMethodClass> map, String url, HttpServletRequest req, HttpServletResponse res,String httpMethod) throws Exception {
+    public void actionToDo(Map.Entry<String, MappingMethodClass> map, String url, HttpServletRequest req, HttpServletResponse res) throws Exception {
         try {
             ServletContext context = getServletContext();
             File rootDir =  (File) context.getAttribute("rootPath");
