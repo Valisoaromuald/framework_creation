@@ -139,7 +139,6 @@ public class Sprint8 {
                 } 
             }
         }
-        System.out.println("any aloha ny valiny e:"+results);
         return results;
     }
 }

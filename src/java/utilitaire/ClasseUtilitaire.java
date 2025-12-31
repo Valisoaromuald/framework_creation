@@ -382,7 +382,6 @@ public class ClasseUtilitaire {
             }
             for (Parameter p : m.getParameters()) {
                 List<String> reqParamName = Sprint8.getAppropriateRequestParamName(p, params);
-                System.out.println("eto am mora hita eto aloha " + reqParamName);
                 if (reqParamName.size() != 0) {
                     Type type = p.getType();
                     Class<?> clazz = type instanceof Class<?> ? (Class<?>) type : null;
@@ -417,7 +416,6 @@ public class ClasseUtilitaire {
                         }
                     }
                 } else {
-                    System.out.println("fa maninona le:");
                     if (maps != null) {
                         objects[i] = maps;
                     }
