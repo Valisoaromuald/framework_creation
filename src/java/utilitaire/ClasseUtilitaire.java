@@ -360,6 +360,8 @@ public class ClasseUtilitaire {
 
     public static Object[] giveMethodParameters(Map.Entry<String, MappingMethodClass> map, HttpServletRequest req,
             String url, List<String> classes) throws Exception {
+        System.out.println("afficheo anie le map e:" + map);
+        System.out.println("ahoana ity ry zandry e: " + map.getValue().getMethodName());
         Class<?> c = Class.forName(map.getValue().getClassName());
         Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
         int nombreParametres = m.getParameterCount();
@@ -423,7 +425,10 @@ public class ClasseUtilitaire {
 
         } else {
             matchingUrl = matchUrl(routePattern, url);
+            System.out.println("match url:" + matchingUrl);
+            System.out.println("methode: " + m);
             for (Map.Entry<String, String> entry : matchingUrl.entrySet()) {
+                System.out.println("valeur be : " + entry.getKey());
                 Parameter p = findMethodParamHavingName(m, entry.getKey());
                 if (p != null) {
                     Parameter[] parameters = m.getParameters();
