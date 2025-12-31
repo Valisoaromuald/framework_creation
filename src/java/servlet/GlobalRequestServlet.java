@@ -109,7 +109,6 @@ public class GlobalRequestServlet extends HttpServlet {
 
                 Map.Entry<String, MappingMethodClass> urlInfo = ClasseUtilitaire
                         .getRelevantMethodAndClassNames(urlsWithMappedMethodAndClass, root, path, httpMethod);
-                        .getRelevantMethodAndClassNames(urlsWithMappedMethodAndClass, root, path, httpMethod);
                 if (urlInfo == null) {
                     PrintWriter out = response.getWriter();
                     out.println("<h1>404 - Page / Not found</h1>");
@@ -117,7 +116,6 @@ public class GlobalRequestServlet extends HttpServlet {
                     return;
                 }
 
-                actionToDo(urlInfo, path, request, response);
                 actionToDo(urlInfo, path, request, response);
 
             } catch (Exception e) {
