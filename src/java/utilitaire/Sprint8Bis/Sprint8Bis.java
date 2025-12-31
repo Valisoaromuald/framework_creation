@@ -1,8 +1,9 @@
-package utilitaire;
+package utilitaire.Sprint8Bis;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -12,10 +13,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import jakarta.servlet.http.HttpServletRequest;
+import utilitaire.ClasseUtilitaire;
 
 public class Sprint8Bis {
 
     public static boolean isJavaClass(Class<?> clazz) {
+
         if (clazz == null)
             return false;
 
@@ -31,10 +34,11 @@ public class Sprint8Bis {
             return false;
 
         String packageName = pkg.getName();
+
         return packageName.startsWith("java.")
                 || packageName.startsWith("javax.")
-                || packageName.startsWith("jdk.")
-                || packageName.startsWith("sun.");
+                || packageName.startsWith("jakarta.")
+                || packageName.startsWith("jdk.");
     }
 
     public static List<String> precisionNomsAttributs(Class<?> clazz) {
@@ -47,7 +51,8 @@ public class Sprint8Bis {
         return results;
     }
 
-    public static Object configurerValeursAttributs(String beforeDot, int compteur, List<String>httpParamsName,Class<?> clazz,
+    public static Object configurerValeursAttributs(String partReqParamName, int compteur, List<String> httpParamsName,
+            Class<?> clazz,
             HttpServletRequest req) throws Exception {
 
         List<String> reqParamsName = ClasseUtilitaire.getHttpParameters(req);
@@ -56,38 +61,59 @@ public class Sprint8Bis {
         System.out.println("compteur :" + compteur);
         Field[] fields = clazz.getDeclaredFields();
         if (compteur == 0) {
-            beforeDot = clazz.getName().substring(0, 1).toLowerCase();
+            partReqParamName = clazz.getName().substring(0, 1).toLowerCase();
         }
         for (int i = 0; i < fields.length; i++) {
             Field f = fields[i];
             Class<?> fieldType = f.getType();
-            System.out.println("attribut:" + f.getName());
-            System.out.println("beforeDot:" + beforeDot);
-            List<String> reqParamsNameNecessary = httpParamsName!=null && httpParamsName.size()!= 0 ?httpParamsName: getReqParamsNameByBeforeDotAndFieldName(beforeDot, f, reqParamsName);
-            System.out.println("reqParamsNameNecessary:" + reqParamsNameNecessary);
+            partReqParamName = addFieldNameIn(partReqParamName, f.getName());
+            System.out.println("affichage: " + partReqParamName);
+            List<String> reqParamsNameNecessary = httpParamsName != null && httpParamsName.size() != 0
+                    && appearsInEachStringOfLists(partReqParamName, httpParamsName) ? httpParamsName
+                            : getCorrespondingReqParamName(partReqParamName, reqParamsName);
             Object obj = null;
-            if (reqParamsNameNecessary.size() != 0) {
+            System.out.println("reqParamNecessary: " + reqParamsNameNecessary);
+            if (reqParamsNameNecessary != null && reqParamsNameNecessary.size() != 0) {
                 if (isJavaClass(fieldType)) {
-                    if (fieldType.isArray()) {
+                    System.out.println("fieldName: " + f.getName());
+                    if (ObjectChecking.isListType(fieldType)) {
+                        Type typeTenaIlaina = f.getGenericType();
+                        System.out.println("type Ilaina BEE: " + typeTenaIlaina);
+                        obj = ObjectChecking.createAndFillList(typeTenaIlaina, partReqParamName, 0, null,
+                                reqParamsNameNecessary, req);
+                    } else if (fieldType.isArray()) {
                         reqParamsNameNecessary = getSousChainesPourAllocation(f, reqParamsNameNecessary);
                         obj = allouerTableau(0, 0, reqParamsNameNecessary, fieldType);
-                        fillArrayRecursive(instance, f, obj, new ArrayList<Integer>(), req);
+                        fillArrayRecursive(partReqParamName, obj, new ArrayList<Integer>(), req);
                     } else {
                         String paramValue = req.getParameter(reqParamsNameNecessary.get(0));
                         obj = ClasseUtilitaire.parseStringToType(paramValue, fieldType);
                     }
                 } else {
-                    if (!fieldType.isArray()) {
-                        obj = configurerValeursAttributs(f.getName(), compteur + 1, null,fieldType, req);
+                    if (!ObjectChecking.isArrayType(fieldType) && ObjectChecking.isListType(fieldType)) {
+                        obj = configurerValeursAttributs(partReqParamName, compteur + 1, null, fieldType, req);
                     } else {
-                        obj = allouerTableau(0, 0, reqParamsNameNecessary, fieldType);
-                        fillArrayRecursive(instance, f, obj, new ArrayList<Integer>(), req);
+                        if (ObjectChecking.isArrayType(fieldType)) {
+                            obj = allouerTableau(0, 0, reqParamsNameNecessary, fieldType);
+                            fillArrayRecursive(partReqParamName, obj, new ArrayList<Integer>(), req);
+                        }
+
                     }
                 }
                 callSetter(instance, f.getName(), obj);
             }
+            partReqParamName = removeFieldNameIn(partReqParamName, f.getName());
         }
         return instance;
+    }
+
+    public static boolean appearsInEachStringOfLists(String chaine, List<String> chaines) {
+        for (String ch : chaines) {
+            if (!ch.contains(chaine)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static List<Integer> getNombresEntreCrochet(String str) {
@@ -116,15 +142,6 @@ public class Sprint8Bis {
                 return -1;
         }
         return 0;
-    }
-
-    public static int getIndiceChaineDansListeChaines(String chaine, List<String> chaines) throws Exception {
-        for (int i = 0; i < chaines.size(); i++) {
-            if (chaines.get(i).equals(chaine)) {
-                return i;
-            }
-        }
-        throw new Exception("cette chaine de caracteres n'est pas dans la liste");
     }
 
     public static int getTailleMax(int indice, List<String> chaines) throws Exception {
@@ -175,43 +192,18 @@ public class Sprint8Bis {
                         chaines,
                         clazz.getComponentType());
             } else {
-                valeur = null; // feuille
+                valeur = null;
             }
 
-            // ← LIGNE MANQUANTE DANS TA LOGIQUE
             Array.set(tableauExterne, i, valeur);
         }
 
         return tableauExterne;
     }
 
-    public static String getBeforeDotSubStringfromChain(String beforeDot, String chain) {
-        int indexOfFirstOccurence = chain.indexOf(beforeDot);
-        String result = null;
-        if (indexOfFirstOccurence != -1) {
-            int indexOfFirstDot = chain.indexOf(".", indexOfFirstOccurence + beforeDot.length());
-            result = chain.substring(indexOfFirstOccurence, indexOfFirstDot + 1);
-        }
-        return result;
-    }
-
-    public static List<String> getReqParamsNameByBeforeDotAndFieldName(String beforeDot, Field f,
-            List<String> reqParamsName) {
-        List<String> results = new ArrayList<String>();
-        for (String str : reqParamsName) {
-            String beforeDotFromChain = getBeforeDotSubStringfromChain(beforeDot, str);
-            if (beforeDotFromChain != null) {
-                String strToCheck = beforeDotFromChain + f.getName();
-                if (str.contains(strToCheck)) {
-                    results.add(str);
-                }
-            }
-        }
-        return results;
-    }
-
     public static List<String> getSousChainesPourAllocation(Field f, List<String> chaines) {
         List<String> results = new ArrayList<String>();
+        ArrayList<String> resultats = new ArrayList<String>();
         String nomAttribut = f.getName();
         Class<?> clazz = f.getClass();
         int lastIndex = 0;
@@ -232,23 +224,22 @@ public class Sprint8Bis {
     public static void setValue(
             Object array,
             int index,
-            Class<?> componentType,
-            List<String>listAngalanaValeurs,HttpServletRequest req) throws Exception {
+            String partReqParamName,
+            List<String> listAngalanaValeurs, HttpServletRequest req) throws Exception {
 
         try {
+            Class<?> componentType = getTypeComposant(array);
             // Création du tableau si nécessaire
-            if(listAngalanaValeurs!= null && listAngalanaValeurs.size()!= 0){
-
+            if (listAngalanaValeurs != null && listAngalanaValeurs.size() != 0) {
                 if (array == null) {
                     array = Array.newInstance(componentType, index + 1);
                 }
-    
                 if (isJavaClass(componentType)) {
                     String value = req.getParameter(listAngalanaValeurs.get(0));
                     Object converted = ClasseUtilitaire.parseStringToType(value, componentType);
-    
+
                     if (componentType.isPrimitive()) {
-    
+
                         if (componentType == int.class) {
                             Array.setInt(array, index, ((Number) converted).intValue());
                         } else if (componentType == long.class) {
@@ -269,15 +260,16 @@ public class Sprint8Bis {
                             throw new IllegalArgumentException(
                                     "Type primitif non supporté : " + componentType.getName());
                         }
-    
+
                     } else {
                         Array.set(array, index, converted);
                     }
-    
+
                 } else {
                     // Type non Java → instanciation récursive
                     Object nestedObject = componentType.getDeclaredConstructor().newInstance();
-                    nestedObject = configurerValeursAttributs("",1,listAngalanaValeurs,nestedObject.getClass(),req);
+                    nestedObject = configurerValeursAttributs(partReqParamName, 1, listAngalanaValeurs,
+                            nestedObject.getClass(), req);
                     Array.set(array, index, nestedObject);
                 }
             }
@@ -297,19 +289,45 @@ public class Sprint8Bis {
                 Character.toUpperCase(attributeName.charAt(0)) +
                 attributeName.substring(1);
 
-        Method setter = target.getClass().getMethod(setterName, value.getClass());
-        setter.invoke(target, value);
+        Method[] methods = target.getClass().getMethods();
+
+        for (Method m : methods) {
+            if (!m.getName().equals(setterName)) {
+                continue;
+            }
+
+            Class<?>[] params = m.getParameterTypes();
+            if (params.length != 1) {
+                continue;
+            }
+
+            Class<?> paramType = params[0];
+
+            // Cas null
+            if (value == null) {
+                if (!paramType.isPrimitive()) {
+                    m.invoke(target, value);
+                    return;
+                }
+                continue;
+            }
+
+            // Compatibilité normale (List, interface, héritage)
+            if (paramType.isAssignableFrom(value.getClass())) {
+                m.invoke(target, value);
+                return;
+            }
+        }
+
+        throw new NoSuchMethodException(
+                "Setter compatible introuvable : " + setterName);
     }
 
-    public static List<String> getCorrespondingReqParamName(Field f, List<Integer> nombresEntreCrochet,
+    public static List<String> getCorrespondingReqParamName(String partReqParamName,
             List<String> reqParamsName) {
         List<String> results = new ArrayList<String>();
-        String toCompare = f.getName();
-        for (Integer nb : nombresEntreCrochet) {
-            toCompare += "[" + nb + "]";
-        }
         for (int i = 0; i < reqParamsName.size(); i++) {
-            if (reqParamsName.get(i).contains(toCompare)) {
+            if (reqParamsName.get(i).contains(partReqParamName)) {
                 results.add(reqParamsName.get(i));
             }
         }
@@ -317,7 +335,7 @@ public class Sprint8Bis {
     }
 
     public static void fillArrayRecursive(
-            Object instance, Field f,
+            String partReqParamName,
             Object array, List<Integer> nombresEntreCrochet, HttpServletRequest req) throws Exception {
         List<String> reqParamsName = ClasseUtilitaire.getHttpParameters(req);
         Class<?> componentType = array.getClass().getComponentType();
@@ -330,14 +348,63 @@ public class Sprint8Bis {
             nombresEntreCrochet.add(i);
 
             if (element != null && element.getClass().isArray()) {
-                fillArrayRecursive(instance, f, element, nombresEntreCrochet, req);
+                fillArrayRecursive(partReqParamName, element, nombresEntreCrochet, req);
             } else {
-                List<String> listAngalanaValeurs = getCorrespondingReqParamName(f, nombresEntreCrochet, reqParamsName);
-                System.out.println("angalana valeur:"+listAngalanaValeurs);
+                partReqParamName = buildPartReqParamName(partReqParamName, nombresEntreCrochet);
+                List<String> listAngalanaValeurs = getCorrespondingReqParamName(partReqParamName, reqParamsName);
                 nombresEntreCrochet.removeLast();
-                setValue(array, i, componentType,listAngalanaValeurs, req);
+                setValue(array, i, partReqParamName, listAngalanaValeurs, req);
             }
         }
         nombresEntreCrochet = new ArrayList<Integer>();
     }
+
+    public static String buildPartReqParamName(String partReqParamName, List<Integer> nombresEntreCrochet) {
+        int indexOfLastOpenBracket = partReqParamName.indexOf("[");
+        System.out.println("dernier indice crochet ouvrant:" + indexOfLastOpenBracket);
+        if (indexOfLastOpenBracket != -1) {
+            partReqParamName = partReqParamName.substring(0, indexOfLastOpenBracket);
+        }
+        System.out.println("apres traitement:" + partReqParamName);
+        if (nombresEntreCrochet != null && nombresEntreCrochet.size() != 0) {
+            for (Integer nb : nombresEntreCrochet) {
+                partReqParamName += "[" + nb + "]";
+            }
+        }
+        System.out.println("apres traitement final:" + partReqParamName);
+        return partReqParamName;
+    }
+
+    public static Class<?> getTypeComposant(Object object) {
+        Class<?> typeComposant = object.getClass();
+        while (typeComposant.isArray()) {
+            typeComposant = typeComposant.getComponentType();
+        }
+        return typeComposant;
+    }
+
+    public static String removeFieldNameIn(String chaine, String fieldName) {
+        int fieldNameOccurencyIndex = chaine.indexOf(fieldName);
+        if (fieldNameOccurencyIndex != -1) {
+            int indexOfClosingBracketAfterFieldName = chaine.lastIndexOf("]",
+                    fieldNameOccurencyIndex + fieldName.length());
+
+            if (indexOfClosingBracketAfterFieldName != -1) {
+                chaine = chaine.substring(0, indexOfClosingBracketAfterFieldName + 1);
+            } else {
+                chaine = chaine.substring(0, fieldNameOccurencyIndex);
+            }
+        }
+        return chaine;
+    }
+
+    public static String addFieldNameIn(String chaine, String fieldName) {
+        if (chaine.substring(chaine.length() - 1).equals(".")) {
+            chaine += fieldName;
+        } else {
+            chaine += "." + fieldName;
+        }
+        return chaine;
+    }
+
 }
