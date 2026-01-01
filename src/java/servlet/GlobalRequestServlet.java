@@ -3,10 +3,12 @@ package servlet;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -15,6 +17,7 @@ import jakarta.servlet.http.Part;
 
 import javax.naming.Context;
 
+import annotation.Json;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -24,6 +27,8 @@ import utilitaire.ClasseUtilitaire;
 import utilitaire.MappingMethodClass;
 import utilitaire.ModelView;
 import utilitaire.Sprint8;
+import utilitaire.Sprint9.JsonResponse;
+import utilitaire.Sprint9.JsonUtil;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.annotation.MultipartConfig;
 
@@ -44,7 +49,7 @@ public class GlobalRequestServlet extends HttpServlet {
             context.setAttribute("hashmap", mappingMethodClass);
             context.setAttribute("rootPath", root);
             context.setAttribute("uploadFolder", uploadFolder);
-            List<Class<?>> classes = Sprint8.getClassesWithFields(ClasseUtilitaire.findAllClassNames(root, ""));
+      
         } catch (Exception e) {
             System.out.println("Erreur d'initialisation : " + e.getMessage());
             e.printStackTrace();
@@ -105,6 +110,7 @@ public class GlobalRequestServlet extends HttpServlet {
                 Map<String, List<MappingMethodClass>> urlsWithMappedMethodAndClass = (Map<String, List<MappingMethodClass>>) context
                         .getAttribute("hashmap");
 
+
                 Map.Entry<String, MappingMethodClass> urlInfo = ClasseUtilitaire
                         .getRelevantMethodAndClassNames(urlsWithMappedMethodAndClass, root, path, httpMethod);
                 if (urlInfo == null) {
@@ -158,16 +164,16 @@ public class GlobalRequestServlet extends HttpServlet {
             File rootDir = (File) context.getAttribute("rootPath");
             Path uploadFolder = (Path) context.getAttribute("uploadFolder");
             List<String> classesNames = ClasseUtilitaire.findAllClassNames(rootDir, "");
+            List<String> classesNames = ClasseUtilitaire.findAllClassNames(rootDir, "");
+            Object[] objects = ClasseUtilitaire.giveMethodParameters(map, req, url, classesNames);
             Class<?> c = Class.forName(map.getValue().getClassName());
             Object instance = c.getDeclaredConstructor().newInstance();
             Object[] objects = ClasseUtilitaire.giveMethodParameters(instance, uploadFolder, map, req, url,
                     classesNames);
             Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
             Object obj = m.invoke(instance, objects);
-            if (obj == null) {
-                obj = "";
-            }
 
+            Object obj = m.invoke(instance, objects);
             Class<?> typeRetour = m.getReturnType();
 
             if (typeRetour.equals(String.class)) {
@@ -187,10 +193,45 @@ public class GlobalRequestServlet extends HttpServlet {
                 RequestDispatcher dispatcher = req.getRequestDispatcher("/" + mv.getView());
                 dispatcher.forward(req, res);
                 return;
+            } else {
+                if (m != null) {                    
+                    Json jsonAnnotation = m.getAnnotation(Json.class);
+                    if (jsonAnnotation != null) {
+                        try {
+                            JsonResponse<Object> jsonResponse = new JsonResponse<>("success", res.getStatus(), obj);
+                            writeJson(res, jsonResponse);
+
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            res.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                            writeJson(res, new JsonResponse<>("error", res.getStatus(), null));
+                        }
+                    }
+                }
+
             }
-        } catch (Exception e) {
+        } catch (InvocationTargetException ite) {
+            Throwable cause = ite.getCause(); // <-- vraie exception du contrôleur
+            cause.printStackTrace();
+            res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+
+            JsonResponse<Object> errorResponse = new JsonResponse<>("error", res.getStatus(), cause.getMessage());
+
+            writeJson(res, errorResponse);
+        } catch (
+
+        Exception e) {
             e.printStackTrace();
             throw new Exception("Erreur dans actionToDo:" + e.getMessage());
+        }
+    }
+
+    private void writeJson(HttpServletResponse resp, Object obj) throws IOException {
+        resp.setContentType("application/json");
+        try {
+            resp.getWriter().write(JsonUtil.toJson(obj));
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 

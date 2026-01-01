@@ -16,8 +16,10 @@ import java.util.List;
 import java.util.Map;
 import jakarta.servlet.http.Part;
 import servlet.GlobalRequestServlet;
+
 import annotation.InputParam;
 import jakarta.servlet.http.HttpServletRequest;
+import utilitaire.Sprint8Bis.Sprint8Bis;
 
 public class Sprint8 {
 
@@ -118,12 +120,14 @@ public class Sprint8 {
         return result;
 
     }
-
-    public static String getAppropriateRequestParamName(Parameter p, List<String> reqParamsNames) {
-        InputParam inputParamAnnotation = ClasseUtilitaire.getSpecificAnnotation(p, InputParam.class);
-        for (String s : reqParamsNames) {
-            if (s.equals(p.getName())) {
-                return s;
+    public static String getStringForResearchInRequestParameters(Parameter p){
+        String andramanaVoalohany= p.getName();
+        Type type = p.getType();
+        if(type instanceof Class<?> typeClass){
+            System.out.println("afficheo ihany aloha :"+p.getName()+"tableau ve:"+typeClass.isArray());
+            if(!Sprint8Bis.isJavaClass(typeClass)){
+                if(!typeClass.isArray())
+                    andramanaVoalohany = andramanaVoalohany.substring(0, 1).toLowerCase() + ".";
             }
             if (inputParamAnnotation != null) {
                 if (inputParamAnnotation.paramName().equals(s)) {
@@ -131,6 +135,30 @@ public class Sprint8 {
                 }
             }
         }
-        return null;
+        return andramanaVoalohany;
+    }
+    public static List<String> getAppropriateRequestParamName(Parameter p, List<String> reqParamsNames) {
+        String andramanaVoalohany= getStringForResearchInRequestParameters(p);
+        List<String> results = new ArrayList<String>();
+        for (String s : reqParamsNames) {
+            int indexOfFirstOccurency = s.indexOf(andramanaVoalohany);
+            System.out.println("index of first occurency: " + indexOfFirstOccurency);
+            if (indexOfFirstOccurency == 0) {
+                results.add(s);
+            } else {
+                boolean hasAnnotation = p.isAnnotationPresent(InputParam.class);
+                System.out.println("annotation:" + hasAnnotation);
+                if (hasAnnotation) {
+                    InputParam inpParam = p.getAnnotation(InputParam.class);
+                    indexOfFirstOccurency = s.indexOf(inpParam.paramName());
+                    System.out.println("index of first occurency with annotation: " + indexOfFirstOccurency);
+
+                    if (indexOfFirstOccurency == 0) {
+                        results.add(s);
+                    }
+                } 
+            }
+        }
+        return results;
     }
 }

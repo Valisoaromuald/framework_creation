@@ -9,6 +9,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 // import java.text.Annotation;
 import java.nio.file.Path;
+import java.lang.annotation.Annotation;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,6 +30,8 @@ import annotation.UrlMapping;
 
 import jakarta.servlet.http.HttpServletRequest;
 import servlet.GlobalRequestServlet;
+import utilitaire.Sprint8Bis.ObjectChecking;
+import utilitaire.Sprint8Bis.Sprint8Bis;
 
 public class ClasseUtilitaire {
     public static List<String> findAllClassNames(File rootDir, String packageName) throws ClassNotFoundException {
@@ -66,7 +69,6 @@ public class ClasseUtilitaire {
                     break;
                 }
             } catch (ClassNotFoundException e) {
-
             }
             cpt--;
         }
@@ -75,52 +77,67 @@ public class ClasseUtilitaire {
     }
 
     public static Map<String, List<MappingMethodClass>> generateUrlsWithMappedMethodClass(File file) throws Exception {
-        Map<String, List<MappingMethodClass>> results = new HashMap<String, List<MappingMethodClass>>();
+
+        Map<String, List<MappingMethodClass>> results = new HashMap<>();
+
         List<String> classNames = findAllClassNames(file, "");
-        List<MappingMethodClass> mappingMethods = new ArrayList<>();
-        Object annotation = null;
-        String lastKey = null;
-        String methodName = null;
-        List<String> keys = new ArrayList<>();
+
         for (String className : classNames) {
+
             Class<?> clazz = createClass(className);
-            if (clazz != null) {
-                if (clazz.isAnnotationPresent(Controleur.class)) {
-                    // Method[] methodes = ArrangerMethodClass(clazz);
-                    for (Method m : clazz.getDeclaredMethods()) {
-                        annotation = null;
-                        methodName = null;
-                        if (m.isAnnotationPresent(UrlMapping.class)) {
-                            annotation = (UrlMapping) m.getAnnotation(UrlMapping.class);
-                            lastKey = ((UrlMapping) annotation).url();
-                            methodName = "ALL";
+            if (clazz == null)
+                continue;
 
-                        } else if (m.isAnnotationPresent(GetHttp.class)) {
-                            annotation = (GetHttp) m.getAnnotation(GetHttp.class);
-                            lastKey = ((GetHttp) annotation).url();
-                            methodName = "GET";
+            // On ne considère que les contrôleurs
+            if (!clazz.isAnnotationPresent(Controleur.class))
+                continue;
 
-                        } else if (m.isAnnotationPresent(PostHttp.class)) {
-                            annotation = (PostHttp) m.getAnnotation(PostHttp.class);
-                            lastKey = ((PostHttp) annotation).url();
-                            methodName = "POST";
-                        }
-                        keys = results.keySet().stream().toList();
-                        if (!cleDansLaListe(lastKey, keys)) {
-                            mappingMethods = new ArrayList<>();
-                        }
-                        if (className != null && methodName != null) {
-                            results.put(lastKey, mappingMethods);
-                            mappingMethods.add(new MappingMethodClass(clazz.getName(), m.getName(), methodName));
-                        }
-                    }
+            for (Method m : clazz.getDeclaredMethods()) {
+
+                String url = null;
+                String httpMethod = null;
+
+                // ======================
+                // Détection des annotations HTTP
+                // ======================
+                if (m.isAnnotationPresent(UrlMapping.class)) {
+                    UrlMapping ann = m.getAnnotation(UrlMapping.class);
+                    url = ann.url();
+                    httpMethod = "ALL";
+
+                } else if (m.isAnnotationPresent(GetHttp.class)) {
+                    GetHttp ann = m.getAnnotation(GetHttp.class);
+                    url = ann.url();
+                    httpMethod = "GET";
+
+                } else if (m.isAnnotationPresent(PostHttp.class)) {
+                    PostHttp ann = m.getAnnotation(PostHttp.class);
+                    url = ann.url();
+                    httpMethod = "POST";
                 }
+
+                // Aucune annotation → on ignore la méthode
+                if (url == null || httpMethod == null)
+                    continue;
+
+                // ======================
+                // Récupération / création sûre de la liste
+                // ======================
+                List<MappingMethodClass> mappingMethods = results.computeIfAbsent(url, k -> new ArrayList<>());
+
+                // ======================
+                // Ajout de la méthode
+                // ======================
+                mappingMethods.add(
+                        new MappingMethodClass(
+                                clazz.getName(),
+                                m.getName(),
+                                httpMethod));
             }
         }
+
         return results;
     }
-
-
 
     public static Map.Entry<String, MappingMethodClass> getRelevantMethodAndClassNames(
             Map<String, List<MappingMethodClass>> urlsWithMappedMethodClass, File file, String url, String httpMethod)
@@ -144,19 +161,21 @@ public class ClasseUtilitaire {
         Map.Entry<String, MappingMethodClass> result = null;
         boolean checked = false;
         Map<String, String> matcher = null;
+        System.out.println("methode http: " + httpMethod);
         try {
             if ((url).isEmpty() || (httpMethod).isEmpty()) {
                 throw new Exception("url ou httpMethod est vide");
             }
             for (Map.Entry<String, List<MappingMethodClass>> entry : urlsWithMappedMethodClass.entrySet()) {
                 matcher = matchUrl(entry.getKey(), url);
-
+                System.out.println("efa mety ve eto e vjalmfjlk: ");
                 if (matcher == null || matcher.size() == 0) {
                     if (entry.getKey().equals(url)) {
                         for (MappingMethodClass mmc : entry.getValue()) {
                             if (mmc.getHttpMethod().equals(httpMethod)) {
                                 checked = true;
                                 result = new AbstractMap.SimpleEntry<>(entry.getKey(), mmc);
+                                break;
                             }
                         }
                         if (!checked) {
@@ -169,6 +188,7 @@ public class ClasseUtilitaire {
                     }
 
                 } else {
+                    System.out.println("babason");
                     for (MappingMethodClass mmc : entry.getValue()) {
                         if (mmc.getHttpMethod().equals(httpMethod)) {
                             checked = true;
@@ -184,6 +204,7 @@ public class ClasseUtilitaire {
                     }
                 }
             }
+            System.out.println("result: " + result.getValue().getMethodName());
             if (result == null) {
                 throw new Exception("Aucune méthode trouvée pour l'url et la méthode HTTP spécifiées.");
             }
@@ -191,15 +212,6 @@ public class ClasseUtilitaire {
             throw e;
         }
         return result;
-    }
-
-    public static boolean cleDansLaListe(String key, List<String> liste) {
-        for (String s : liste) {
-            if (s.equals(key)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public static Map<String, String> matchUrl(String routePattern, String actualUrl) {
@@ -319,7 +331,6 @@ public class ClasseUtilitaire {
         } else if (targetType == java.time.LocalDateTime.class) {
             return java.time.LocalDateTime.parse(value);
         }
-
         throw new IllegalArgumentException("Type non supporté : " + targetType.getName());
     }
 
@@ -345,36 +356,74 @@ public class ClasseUtilitaire {
         return p.getAnnotation(annotationClass);
     }
 
-    public static Object[] giveMethodParameters(
-            Object instance, Path uploadFolder,
-            Map.Entry<String, MappingMethodClass> map, HttpServletRequest req,
+    public static List<String> getHttpParameters(HttpServletRequest req) {
+        Enumeration<String> reqParams = req.getParameterNames();
+        List<String> params = Collections.list(reqParams);
+        return params;
+    }
+
+    public static Object[] giveMethodParameters(Object instance, Path uploadFolder,Map.Entry<String, MappingMethodClass> map, HttpServletRequest req,
             String url, List<String> classes) throws Exception {
+        System.out.println("afficheo anie le map e:" + map);
+        System.out.println("ahoana ity ry zandry e: " + map.getValue().getMethodName());
         Class<?> c = Class.forName(map.getValue().getClassName());
         Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
         int nombreParametres = m.getParameterCount();
         Object[] objects = (nombreParametres != 0)
                 ? new Object[nombreParametres]
                 : null;
-
         String routePattern = null;
         routePattern = map.getKey();
         Map<String, String> matchingUrl = null;
         int i = 0;
         String value = null;
-        Enumeration<String> reqParams = req.getParameterNames();
-        List<String> params = Collections.list(reqParams);
-        Object maps = null;
+        List<String> params = getHttpParameters(req);
+         Object maps = null;
         boolean hasAttachedFiles = false;
         if(GlobalRequestServlet.isMultiPart(req)){
             hasAttachedFiles = GlobalRequestServlet.hasAttachedFiles(req);
         }
         if (params.size() != 0 || hasAttachedFiles) {
             maps = Sprint8.buildMap(req, map.getValue(), classes);
+        }
+        if (params.size() != 0) {
+            boolean hasMap = Sprint8.hasMap(m);
+            
             for (Parameter p : m.getParameters()) {
-                String reqParamName = Sprint8.getAppropriateRequestParamName(p, params);
-                if (reqParamName != null) {
-                    value = req.getParameter(reqParamName).trim();
-                    objects[i] = parseStringToType(value, p.getType());
+                List<String> reqParamName = Sprint8.getAppropriateRequestParamName(p, params);
+                if (reqParamName.size() != 0) {
+                    Type type = p.getType();
+                    Class<?> clazz = type instanceof Class<?> ? (Class<?>) type : null;
+                    String paramName = getSpecificAnnotation(p, InputParam.class) != null
+                            ? getSpecificAnnotation(p, InputParam.class).paramName()
+                            : p.getName();
+                    List<String> chainesIlaina = Sprint8Bis.getCorrespondingReqParamName(paramName, params);
+                    if (Sprint8Bis.isJavaClass(clazz)) {
+                        if (!ObjectChecking.isArrayType(type) && !ObjectChecking.isListType(type)) {
+                            value = req.getParameter(reqParamName.get(0)).trim();
+                            objects[i] = parseStringToType(value, p.getType());
+                        } else {
+                            if (ObjectChecking.isArrayType(type)) {
+                                objects[i] = Sprint8Bis.allouerTableau(0, 0, chainesIlaina, (Class<?>) type);
+                                Sprint8Bis.fillArrayRecursive(paramName, objects[i], new ArrayList<Integer>(), req);
+                            }
+                            if (ObjectChecking.isListType(type)) {
+                                Type typeTenaIlaina = p.getParameterizedType();
+                                objects[i] = ObjectChecking.createAndFillList(typeTenaIlaina, paramName, 0, null,
+                                        chainesIlaina,
+                                        req);
+
+                            }
+                        }
+                    } else {
+                        if (!ObjectChecking.isArrayType(type) && !ObjectChecking.isListType(type)) {
+                            objects[i] = Sprint8Bis.configurerValeursAttributs("", 0, null, (Class<?>) type, req);
+                        }
+                        if (ObjectChecking.isArrayType(type)) {
+                            objects[i] = Sprint8Bis.allouerTableau(0, 0, chainesIlaina, (Class<?>) type);
+                            Sprint8Bis.fillArrayRecursive(paramName, objects[i], new ArrayList<Integer>(), req);
+                        }
+                    }
                 } else {
                     if (maps != null) {
                         Field uploadField = Sprint10.FieldForUpload(c);
@@ -392,9 +441,12 @@ public class ClasseUtilitaire {
 
         } else {
             matchingUrl = matchUrl(routePattern, url);
+            System.out.println("match url:" + matchingUrl);
+            System.out.println("methode: " + m);
             for (Map.Entry<String, String> entry : matchingUrl.entrySet()) {
+                System.out.println("valeur be : " + entry.getKey());
                 Parameter p = findMethodParamHavingName(m, entry.getKey());
-                if (p != null && p.getType() != Map.class) {
+                if (p != null) {
                     Parameter[] parameters = m.getParameters();
                     value = entry.getValue().trim();
                     for (int j = 0; j < m.getParameterCount(); j++) {
@@ -405,7 +457,6 @@ public class ClasseUtilitaire {
                 }
             }
         }
-
         return objects;
     }
 
