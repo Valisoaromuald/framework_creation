@@ -156,62 +156,62 @@ public class ClasseUtilitaire {
     }
 
     public static Map.Entry<String, MappingMethodClass> getMethodClassNameByUrlAndMethod(
-            Map<String, List<MappingMethodClass>> urlsWithMappedMethodClass, String url, String httpMethod)
-            throws Exception {
-        Map.Entry<String, MappingMethodClass> result = null;
-        boolean checked = false;
-        Map<String, String> matcher = null;
-        System.out.println("methode http: " + httpMethod);
-        try {
-            if ((url).isEmpty() || (httpMethod).isEmpty()) {
-                throw new Exception("url ou httpMethod est vide");
-            }
-            for (Map.Entry<String, List<MappingMethodClass>> entry : urlsWithMappedMethodClass.entrySet()) {
-                matcher = matchUrl(entry.getKey(), url);
-                System.out.println("efa mety ve eto e vjalmfjlk: ");
-                if (matcher == null || matcher.size() == 0) {
-                    if (entry.getKey().equals(url)) {
-                        for (MappingMethodClass mmc : entry.getValue()) {
-                            if (mmc.getHttpMethod().equals(httpMethod)) {
-                                checked = true;
-                                result = new AbstractMap.SimpleEntry<>(entry.getKey(), mmc);
-                                break;
-                            }
-                        }
-                        if (!checked) {
-                            for (MappingMethodClass mmc : entry.getValue()) {
-                                if (mmc.getHttpMethod().equals("ALL")) {
-                                    result = new AbstractMap.SimpleEntry<>(entry.getKey(), mmc);
-                                }
-                            }
-                        }
-                    }
+            Map<String, List<MappingMethodClass>> urlMappings,
+            String url,
+            String httpMethod) throws Exception {
 
-                } else {
-                    System.out.println("babason");
-                    for (MappingMethodClass mmc : entry.getValue()) {
-                        if (mmc.getHttpMethod().equals(httpMethod)) {
-                            checked = true;
-                            result = new AbstractMap.SimpleEntry<>(entry.getKey(), mmc);
-                        }
-                    }
-                    if (!checked) {
-                        for (MappingMethodClass mmc : entry.getValue()) {
-                            if (mmc.getHttpMethod().equals("ALL")) {
-                                result = new AbstractMap.SimpleEntry<>(entry.getKey(), mmc);
-                            }
-                        }
-                    }
-                }
+        validateInputs(url, httpMethod);
+
+        for (Map.Entry<String, List<MappingMethodClass>> entry : urlMappings.entrySet()) {
+
+            if (!urlMatches(entry.getKey(), url)) {
+                continue;
             }
-            System.out.println("result: " + result.getValue().getMethodName());
-            if (result == null) {
-                throw new Exception("Aucune méthode trouvée pour l'url et la méthode HTTP spécifiées.");
+
+            MappingMethodClass method = findMethodByHttpMethod(entry.getValue(), httpMethod);
+
+            if (method != null) {
+                return new AbstractMap.SimpleEntry<>(entry.getKey(), method);
             }
-        } catch (Exception e) {
-            throw e;
         }
-        return result;
+
+        throw new Exception("Aucune méthode trouvée pour l'url et la méthode HTTP spécifiées.");
+    }
+
+    private static void validateInputs(String url, String httpMethod) throws Exception {
+        if (url == null || url.isEmpty()) {
+            throw new Exception("url est vide");
+        }
+        if (httpMethod == null || httpMethod.isEmpty()) {
+            throw new Exception("httpMethod est vide");
+        }
+    }
+
+    private static boolean urlMatches(String routePattern, String url) {
+        if (routePattern.equals(url)) {
+            return true;
+        }
+        Map<String, String> matcher = matchUrl(routePattern, url);
+        return matcher != null && !matcher.isEmpty();
+    }
+
+    private static MappingMethodClass findMethodByHttpMethod(
+            List<MappingMethodClass> methods,
+            String httpMethod) {
+
+        for (MappingMethodClass mmc : methods) {
+            if (mmc.getHttpMethod().equals(httpMethod)) {
+                return mmc;
+            }
+        }
+
+        for (MappingMethodClass mmc : methods) {
+            if (mmc.getHttpMethod().equals("ALL")) {
+                return mmc;
+            }
+        }
+
+        return null;
     }
 
     public static Map<String, String> matchUrl(String routePattern, String actualUrl) {
@@ -362,102 +362,102 @@ public class ClasseUtilitaire {
         return params;
     }
 
-    public static Object[] giveMethodParameters(Object instance, Path uploadFolder,Map.Entry<String, MappingMethodClass> map, HttpServletRequest req,
-            String url, List<String> classes) throws Exception {
-        System.out.println("afficheo anie le map e:" + map);
-        System.out.println("ahoana ity ry zandry e: " + map.getValue().getMethodName());
-        Class<?> c = Class.forName(map.getValue().getClassName());
-        Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
-        int nombreParametres = m.getParameterCount();
-        Object[] objects = (nombreParametres != 0)
-                ? new Object[nombreParametres]
-                : null;
-        String routePattern = null;
-        routePattern = map.getKey();
-        Map<String, String> matchingUrl = null;
-        int i = 0;
-        String value = null;
-        List<String> params = getHttpParameters(req);
-         Object maps = null;
-        boolean hasAttachedFiles = false;
-        if(GlobalRequestServlet.isMultiPart(req)){
-            hasAttachedFiles = GlobalRequestServlet.hasAttachedFiles(req);
-        }
-        if (params.size() != 0 || hasAttachedFiles) {
-            maps = Sprint8.buildMap(req, map.getValue(), classes);
-        }
-        if (params.size() != 0) {
-            boolean hasMap = Sprint8.hasMap(m);
-            
-            for (Parameter p : m.getParameters()) {
-                List<String> reqParamName = Sprint8.getAppropriateRequestParamName(p, params);
-                if (reqParamName.size() != 0) {
-                    Type type = p.getType();
-                    Class<?> clazz = type instanceof Class<?> ? (Class<?>) type : null;
-                    String paramName = getSpecificAnnotation(p, InputParam.class) != null
-                            ? getSpecificAnnotation(p, InputParam.class).paramName()
-                            : p.getName();
-                    List<String> chainesIlaina = Sprint8Bis.getCorrespondingReqParamName(paramName, params);
-                    if (Sprint8Bis.isJavaClass(clazz)) {
-                        if (!ObjectChecking.isArrayType(type) && !ObjectChecking.isListType(type)) {
-                            value = req.getParameter(reqParamName.get(0)).trim();
-                            objects[i] = parseStringToType(value, p.getType());
-                        } else {
-                            if (ObjectChecking.isArrayType(type)) {
-                                objects[i] = Sprint8Bis.allouerTableau(0, 0, chainesIlaina, (Class<?>) type);
-                                Sprint8Bis.fillArrayRecursive(paramName, objects[i], new ArrayList<Integer>(), req);
-                            }
-                            if (ObjectChecking.isListType(type)) {
-                                Type typeTenaIlaina = p.getParameterizedType();
-                                objects[i] = ObjectChecking.createAndFillList(typeTenaIlaina, paramName, 0, null,
-                                        chainesIlaina,
-                                        req);
+    public static Object[] giveMethodParameters(
+            Object instance,
+            Path uploadFolder,
+            Map.Entry<String, MappingMethodClass> map,
+            HttpServletRequest req,
+            String url,
+            List<String> classes) throws Exception {
 
-                            }
-                        }
-                    } else {
-                        if (!ObjectChecking.isArrayType(type) && !ObjectChecking.isListType(type)) {
-                            objects[i] = Sprint8Bis.configurerValeursAttributs("", 0, null, (Class<?>) type, req);
-                        }
-                        if (ObjectChecking.isArrayType(type)) {
-                            objects[i] = Sprint8Bis.allouerTableau(0, 0, chainesIlaina, (Class<?>) type);
-                            Sprint8Bis.fillArrayRecursive(paramName, objects[i], new ArrayList<Integer>(), req);
-                        }
-                    }
-                } else {
-                    if (maps != null) {
-                        Field uploadField = Sprint10.FieldForUpload(c);
-                        if (uploadField != null) {
-                            String fname = uploadField.getName();
-                            String realFieldName = fname.substring(0, 1).toUpperCase() + fname.substring(1);
-                            Method method = c.getMethod("set" + realFieldName, uploadField.getType());
-                            method.invoke(instance, uploadFolder);
-                        }
-                        objects[i] = maps;
-                    }
-                }
-                i++;
-            }
+        Class<?> controllerClass = Class.forName(map.getValue().getClassName());
+        Method method = ClasseUtilitaire.getMethodByNom(
+                controllerClass,
+                map.getValue().getMethodName());
 
-        } else {
-            matchingUrl = matchUrl(routePattern, url);
-            System.out.println("match url:" + matchingUrl);
-            System.out.println("methode: " + m);
-            for (Map.Entry<String, String> entry : matchingUrl.entrySet()) {
-                System.out.println("valeur be : " + entry.getKey());
-                Parameter p = findMethodParamHavingName(m, entry.getKey());
-                if (p != null) {
-                    Parameter[] parameters = m.getParameters();
-                    value = entry.getValue().trim();
-                    for (int j = 0; j < m.getParameterCount(); j++) {
-                        if (parameters[j].getName().equals(p.getName())) {
-                            objects[j] = parseStringToType(value, p.getType());
-                        }
-                    }
+        Parameter[] parameters = method.getParameters();
+        Object[] resolvedParams = parameters.length == 0 ? null : new Object[parameters.length];
+
+        List<String> requestParams = getHttpParameters(req);
+        boolean hasAttachedFiles = GlobalRequestServlet.isMultiPart(req)
+                && GlobalRequestServlet.hasAttachedFiles(req);
+
+        Object bodyMap = null;
+        if (!requestParams.isEmpty() || hasAttachedFiles) {
+            bodyMap = Sprint8.buildMap(req, map.getValue(), classes);
+        }
+
+        for (int i = 0; i < parameters.length; i++) {
+            resolvedParams[i] = resolveSingleParameter(
+                    parameters[i],
+                    req,
+                    requestParams,
+                    bodyMap);
+        }
+
+        Sprint10.injectUploadIfNeeded(instance, uploadFolder, controllerClass);
+        resolvePathVariables(method, resolvedParams, map.getKey(), url);
+
+        return resolvedParams;
+    }
+
+    private static Object resolveSingleParameter(
+        Parameter parameter,
+        HttpServletRequest req,
+        List<String> requestParams,
+        Object bodyMap) throws Exception {
+
+    List<String> matchingParams =
+            Sprint8.getAppropriateRequestParamName(parameter, requestParams);
+
+    if (!matchingParams.isEmpty()) {
+        return resolveFromRequestParam(parameter, req, requestParams);
+    }
+
+    return bodyMap;
+}
+
+
+    public static Object resolveFromRequestParam(
+            Parameter parameter,
+            HttpServletRequest req,
+            List<String> requestParams) throws Exception {
+
+        Type type = parameter.getParameterizedType();
+        Class<?> clazz = parameter.getType();
+
+        String paramName = getSpecificAnnotation(parameter, InputParam.class) != null
+                ? getSpecificAnnotation(parameter, InputParam.class).paramName()
+                : parameter.getName();
+
+        List<String> relatedParams = Sprint8Bis.getCorrespondingReqParamName(paramName, requestParams);
+
+        if (Sprint8Bis.isJavaClass(clazz)) {
+            return ObjectChecking.resolveJavaType(type, clazz, paramName, relatedParams, req);
+        }
+
+        return ObjectChecking.resolveComplexType(type, clazz, paramName, relatedParams, req);
+    }
+
+    public static void resolvePathVariables(
+            Method method,
+            Object[] resolvedParams,
+            String routePattern,
+            String url) throws Exception {
+
+        Map<String, String> pathVariables = matchUrl(routePattern, url);
+        if (pathVariables == null)
+            return;
+
+        Parameter[] parameters = method.getParameters();
+
+        for (Map.Entry<String, String> entry : pathVariables.entrySet()) {
+            for (int i = 0; i < parameters.length; i++) {
+                if (parameters[i].getName().equals(entry.getKey())) {
+                    resolvedParams[i] = parseStringToType(entry.getValue().trim(), parameters[i].getType());
                 }
             }
         }
-        return objects;
     }
 
 }
