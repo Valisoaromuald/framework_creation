@@ -1,11 +1,14 @@
 package utilitaire;
 
 import java.io.File;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+// import java.text.Annotation;
+import java.nio.file.Path;
 import java.lang.annotation.Annotation;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -26,6 +29,7 @@ import annotation.PostHttp;
 import annotation.UrlMapping;
 
 import jakarta.servlet.http.HttpServletRequest;
+import servlet.GlobalRequestServlet;
 import utilitaire.Sprint8Bis.ObjectChecking;
 import utilitaire.Sprint8Bis.Sprint8Bis;
 
@@ -68,6 +72,7 @@ public class ClasseUtilitaire {
             }
             cpt--;
         }
+        System.out.println("misy olana sahady:" + classe);
         return classe;
     }
 
@@ -335,10 +340,9 @@ public class ClasseUtilitaire {
             if (p.getName().equals(name)) {
                 return p;
             } else {
-                boolean hasAnnotation = p.isAnnotationPresent(InputParam.class);
-                if (hasAnnotation) {
-                    InputParam inpParam = p.getAnnotation(InputParam.class);
-                    if (inpParam.paramName().equals(name)) {
+                InputParam inputParamAnnotation = getSpecificAnnotation(p, InputParam.class);
+                if (inputParamAnnotation != null) {
+                    if (inputParamAnnotation.paramName().equals(name)) {
                         return p;
                     }
                 }
@@ -358,7 +362,7 @@ public class ClasseUtilitaire {
         return params;
     }
 
-    public static Object[] giveMethodParameters(Map.Entry<String, MappingMethodClass> map, HttpServletRequest req,
+    public static Object[] giveMethodParameters(Object instance, Path uploadFolder,Map.Entry<String, MappingMethodClass> map, HttpServletRequest req,
             String url, List<String> classes) throws Exception {
         System.out.println("afficheo anie le map e:" + map);
         System.out.println("ahoana ity ry zandry e: " + map.getValue().getMethodName());
@@ -374,12 +378,17 @@ public class ClasseUtilitaire {
         int i = 0;
         String value = null;
         List<String> params = getHttpParameters(req);
-        Map<String, Object> maps = null;
+         Object maps = null;
+        boolean hasAttachedFiles = false;
+        if(GlobalRequestServlet.isMultiPart(req)){
+            hasAttachedFiles = GlobalRequestServlet.hasAttachedFiles(req);
+        }
+        if (params.size() != 0 || hasAttachedFiles) {
+            maps = Sprint8.buildMap(req, map.getValue(), classes);
+        }
         if (params.size() != 0) {
             boolean hasMap = Sprint8.hasMap(m);
-            if (hasMap) {
-                maps = Sprint8.buildMap(req, map.getValue(), classes);
-            }
+            
             for (Parameter p : m.getParameters()) {
                 List<String> reqParamName = Sprint8.getAppropriateRequestParamName(p, params);
                 if (reqParamName.size() != 0) {
@@ -417,6 +426,13 @@ public class ClasseUtilitaire {
                     }
                 } else {
                     if (maps != null) {
+                        Field uploadField = Sprint10.FieldForUpload(c);
+                        if (uploadField != null) {
+                            String fname = uploadField.getName();
+                            String realFieldName = fname.substring(0, 1).toUpperCase() + fname.substring(1);
+                            Method method = c.getMethod("set" + realFieldName, uploadField.getType());
+                            method.invoke(instance, uploadFolder);
+                        }
                         objects[i] = maps;
                     }
                 }

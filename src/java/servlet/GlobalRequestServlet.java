@@ -6,11 +6,14 @@ import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
-import java.text.Annotation;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import jakarta.servlet.http.Part;
 
 import javax.naming.Context;
 
@@ -27,7 +30,9 @@ import utilitaire.Sprint8;
 import utilitaire.Sprint9.JsonResponse;
 import utilitaire.Sprint9.JsonUtil;
 import jakarta.servlet.ServletContext;
+import jakarta.servlet.annotation.MultipartConfig;
 
+@MultipartConfig
 public class GlobalRequestServlet extends HttpServlet {
     private File root;
 
@@ -37,15 +42,14 @@ public class GlobalRequestServlet extends HttpServlet {
             ServletContext context = getServletContext();
             String rootPath = context.getRealPath("/");
             root = new File(rootPath);
+            String uploadFolderName = rootPath + "uploads";
+            Path uploadFolder = Paths.get(uploadFolderName);
             Map<String, List<MappingMethodClass>> mappingMethodClass = ClasseUtilitaire
                     .generateUrlsWithMappedMethodClass(root);
             context.setAttribute("hashmap", mappingMethodClass);
             context.setAttribute("rootPath", root);
-            System.out.println("classe avec des attributs: ");
-            List<Class<?>> classes = Sprint8.getClassesWithFields(ClasseUtilitaire.findAllClassNames(root, ""));
-            for (Class<?> clazz : classes) {
-                System.out.println(clazz.getName());
-            }
+            context.setAttribute("uploadFolder", uploadFolder);
+      
         } catch (Exception e) {
             System.out.println("Erreur d'initialisation : " + e.getMessage());
             e.printStackTrace();
@@ -131,16 +135,44 @@ public class GlobalRequestServlet extends HttpServlet {
         }
     }
 
+    public static boolean hasAttachedFiles(HttpServletRequest req) throws Exception {
+        return req.getParts() != null && req.getParts().size() != 0;
+    }
+    public static boolean isMultiPart(HttpServletRequest request) {
+        String contentType = request.getContentType();
+        return contentType != null && contentType.toLowerCase().startsWith("multipart/");
+    }
+
+    public static Map<String, byte[]> buildMapForFile(HttpServletRequest req) throws Exception {
+        Map<String, byte[]> result = new HashMap<String, byte[]>();
+        for (Part part : req.getParts()) {
+
+            String fileName = part.getSubmittedFileName();
+            if (fileName == null || fileName.isBlank()) {
+                continue;
+            }
+            byte[] data = part.getInputStream().readAllBytes();
+            result.put(fileName, data);
+        }
+        return result;
+    }
+
     public void actionToDo(Map.Entry<String, MappingMethodClass> map, String url, HttpServletRequest req,
             HttpServletResponse res) throws Exception {
         try {
             ServletContext context = getServletContext();
             File rootDir = (File) context.getAttribute("rootPath");
+            Path uploadFolder = (Path) context.getAttribute("uploadFolder");
+            List<String> classesNames = ClasseUtilitaire.findAllClassNames(rootDir, "");
             List<String> classesNames = ClasseUtilitaire.findAllClassNames(rootDir, "");
             Object[] objects = ClasseUtilitaire.giveMethodParameters(map, req, url, classesNames);
             Class<?> c = Class.forName(map.getValue().getClassName());
-            Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
             Object instance = c.getDeclaredConstructor().newInstance();
+            Object[] objects = ClasseUtilitaire.giveMethodParameters(instance, uploadFolder, map, req, url,
+                    classesNames);
+            Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
+            Object obj = m.invoke(instance, objects);
+
             Object obj = m.invoke(instance, objects);
             Class<?> typeRetour = m.getReturnType();
 
@@ -158,7 +190,6 @@ public class GlobalRequestServlet extends HttpServlet {
                         req.setAttribute(entry.getKey(), entry.getValue());
                     }
                 }
-
                 RequestDispatcher dispatcher = req.getRequestDispatcher("/" + mv.getView());
                 dispatcher.forward(req, res);
                 return;

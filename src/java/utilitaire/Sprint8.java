@@ -14,6 +14,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import jakarta.servlet.http.Part;
+import servlet.GlobalRequestServlet;
 
 import annotation.InputParam;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,27 +23,28 @@ import utilitaire.Sprint8Bis.Sprint8Bis;
 
 public class Sprint8 {
 
-    public static boolean hasMap(Method m) {
-        System.out.println("afficahge de la methode: " + m.getName());
-        boolean response = false;
+    public static int hasMap(Method m) throws Exception{
+        int result = 0;
         Parameter[] parameters = m.getParameters();
         for (Parameter p : parameters) {
             Type genericType = p.getParameterizedType();
             if (genericType instanceof ParameterizedType) {
                 ParameterizedType pt = (ParameterizedType) genericType;
-                if (pt.getActualTypeArguments().length > 1) {
-                    Type keyType = pt.getActualTypeArguments()[0];
-                    Type valueType = pt.getActualTypeArguments()[1];
-                    if (keyType == String.class && valueType == Object.class) {
-                        System.out.println("manaraka norme elah");
-                        response = true;
-                        break;
-                    }
+                Type keyType = pt.getActualTypeArguments()[0];
+                Type valueType = pt.getActualTypeArguments()[1];
+                if ((keyType == String.class && valueType == Object.class)) {
+                    result = 1;
+                    break;
+                } else if (keyType == String.class && valueType == byte[].class) {
+                    result = 2;
+                    break;
+                }
+                else{
+                    throw new Exception("le type de la cle de map est:"+keyType+" et celui de la valeur:"+valueType+", ils ne sont pas acceptables");
                 }
             }
         }
-
-        return response;
+        return result;
     }
 
     public static List<Class<?>> getClassesWithFields(List<String> allClasses) throws Exception {
@@ -82,28 +85,40 @@ public class Sprint8 {
         throw new Exception("aucune classe n'a  d'attributs qui correspondent avec ces noms de parametres");
     }
 
-    public static Map<String, Object> buildMap(HttpServletRequest req, MappingMethodClass mc, List<String> allClasses)
+    public static Object buildMap(HttpServletRequest req, MappingMethodClass mc, List<String> allClasses)
             throws Exception {
-        Map<String, Object> result = new HashMap<String, Object>();
+        Object result = null;
         Enumeration<String> listeParametres = req.getParameterNames();
         List<String> paramLists = Collections.list(listeParametres);
 
         Class<?> clazz = Class.forName(mc.getClassName());
-        Class<?> referenceClassForMap = RelevantClassWithHttpParameters(paramLists, allClasses);
+        Method m = ClasseUtilitaire.getMethodByNom(clazz, mc.getMethodName());
+        int hasMap = hasMap(m);
         Field[] fields = clazz.getDeclaredFields();
         Object tempo = null;
         String[] paramValues = null;
-        if (clazz != null) {
-            for (int i = 0; i < paramLists.size(); i++) {
-                paramValues = req.getParameterValues(paramLists.get(i));
-                if (paramValues.length == 1) {
-                    result.put(paramLists.get(i), paramValues[0]);
-                } else {
-                    result.put(paramLists.get(i), Arrays.asList(paramValues));
+        if (hasMap != 0) {
+            if (hasMap == 1) {
+                Class<?> referenceClassForMap = RelevantClassWithHttpParameters(paramLists, allClasses);
+                if (referenceClassForMap != null) {
+                    Map<String, Object> map = new HashMap<String, Object>();
+                    for (int i = 0; i < paramLists.size(); i++) {
+                        paramValues = req.getParameterValues(paramLists.get(i));
+                        if (paramValues.length == 1) {
+                            map.put(paramLists.get(i), paramValues[0]);
+                        } else {
+                            map.put(paramLists.get(i), Arrays.asList(paramValues));
+                        }
+                    }
+                    result = map;
                 }
+            } else {
+                result = GlobalRequestServlet.buildMapForFile(req);
             }
         }
+
         return result;
+
     }
     public static String getStringForResearchInRequestParameters(Parameter p){
         String andramanaVoalohany= p.getName();
@@ -113,6 +128,11 @@ public class Sprint8 {
             if(!Sprint8Bis.isJavaClass(typeClass)){
                 if(!typeClass.isArray())
                     andramanaVoalohany = andramanaVoalohany.substring(0, 1).toLowerCase() + ".";
+            }
+            if (inputParamAnnotation != null) {
+                if (inputParamAnnotation.paramName().equals(s)) {
+                    return s;
+                }
             }
         }
         return andramanaVoalohany;
