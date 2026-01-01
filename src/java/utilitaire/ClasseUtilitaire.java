@@ -156,62 +156,62 @@ public class ClasseUtilitaire {
     }
 
     public static Map.Entry<String, MappingMethodClass> getMethodClassNameByUrlAndMethod(
-            Map<String, List<MappingMethodClass>> urlsWithMappedMethodClass, String url, String httpMethod)
-            throws Exception {
-        Map.Entry<String, MappingMethodClass> result = null;
-        boolean checked = false;
-        Map<String, String> matcher = null;
-        System.out.println("methode http: " + httpMethod);
-        try {
-            if ((url).isEmpty() || (httpMethod).isEmpty()) {
-                throw new Exception("url ou httpMethod est vide");
-            }
-            for (Map.Entry<String, List<MappingMethodClass>> entry : urlsWithMappedMethodClass.entrySet()) {
-                matcher = matchUrl(entry.getKey(), url);
-                System.out.println("efa mety ve eto e vjalmfjlk: ");
-                if (matcher == null || matcher.size() == 0) {
-                    if (entry.getKey().equals(url)) {
-                        for (MappingMethodClass mmc : entry.getValue()) {
-                            if (mmc.getHttpMethod().equals(httpMethod)) {
-                                checked = true;
-                                result = new AbstractMap.SimpleEntry<>(entry.getKey(), mmc);
-                                break;
-                            }
-                        }
-                        if (!checked) {
-                            for (MappingMethodClass mmc : entry.getValue()) {
-                                if (mmc.getHttpMethod().equals("ALL")) {
-                                    result = new AbstractMap.SimpleEntry<>(entry.getKey(), mmc);
-                                }
-                            }
-                        }
-                    }
+            Map<String, List<MappingMethodClass>> urlMappings,
+            String url,
+            String httpMethod) throws Exception {
 
-                } else {
-                    System.out.println("babason");
-                    for (MappingMethodClass mmc : entry.getValue()) {
-                        if (mmc.getHttpMethod().equals(httpMethod)) {
-                            checked = true;
-                            result = new AbstractMap.SimpleEntry<>(entry.getKey(), mmc);
-                        }
-                    }
-                    if (!checked) {
-                        for (MappingMethodClass mmc : entry.getValue()) {
-                            if (mmc.getHttpMethod().equals("ALL")) {
-                                result = new AbstractMap.SimpleEntry<>(entry.getKey(), mmc);
-                            }
-                        }
-                    }
-                }
+        validateInputs(url, httpMethod);
+
+        for (Map.Entry<String, List<MappingMethodClass>> entry : urlMappings.entrySet()) {
+
+            if (!urlMatches(entry.getKey(), url)) {
+                continue;
             }
-            System.out.println("result: " + result.getValue().getMethodName());
-            if (result == null) {
-                throw new Exception("Aucune méthode trouvée pour l'url et la méthode HTTP spécifiées.");
+
+            MappingMethodClass method = findMethodByHttpMethod(entry.getValue(), httpMethod);
+
+            if (method != null) {
+                return new AbstractMap.SimpleEntry<>(entry.getKey(), method);
             }
-        } catch (Exception e) {
-            throw e;
         }
-        return result;
+
+        throw new Exception("Aucune méthode trouvée pour l'url et la méthode HTTP spécifiées.");
+    }
+
+    private static void validateInputs(String url, String httpMethod) throws Exception {
+        if (url == null || url.isEmpty()) {
+            throw new Exception("url est vide");
+        }
+        if (httpMethod == null || httpMethod.isEmpty()) {
+            throw new Exception("httpMethod est vide");
+        }
+    }
+
+    private static boolean urlMatches(String routePattern, String url) {
+        if (routePattern.equals(url)) {
+            return true;
+        }
+        Map<String, String> matcher = matchUrl(routePattern, url);
+        return matcher != null && !matcher.isEmpty();
+    }
+
+    private static MappingMethodClass findMethodByHttpMethod(
+            List<MappingMethodClass> methods,
+            String httpMethod) {
+
+        for (MappingMethodClass mmc : methods) {
+            if (mmc.getHttpMethod().equals(httpMethod)) {
+                return mmc;
+            }
+        }
+
+        for (MappingMethodClass mmc : methods) {
+            if (mmc.getHttpMethod().equals("ALL")) {
+                return mmc;
+            }
+        }
+
+        return null;
     }
 
     public static Map<String, String> matchUrl(String routePattern, String actualUrl) {
