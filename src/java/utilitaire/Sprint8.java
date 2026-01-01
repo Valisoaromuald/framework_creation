@@ -120,6 +120,7 @@ public class Sprint8 {
         return result;
 
     }
+    
     public static String getStringForResearchInRequestParameters(Parameter p){
         String andramanaVoalohany= p.getName();
         Type type = p.getType();
@@ -128,11 +129,6 @@ public class Sprint8 {
             if(!Sprint8Bis.isJavaClass(typeClass)){
                 if(!typeClass.isArray())
                     andramanaVoalohany = andramanaVoalohany.substring(0, 1).toLowerCase() + ".";
-            }
-            if (inputParamAnnotation != null) {
-                if (inputParamAnnotation.paramName().equals(s)) {
-                    return s;
-                }
             }
         }
         return andramanaVoalohany;

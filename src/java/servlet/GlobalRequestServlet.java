@@ -164,15 +164,11 @@ public class GlobalRequestServlet extends HttpServlet {
             File rootDir = (File) context.getAttribute("rootPath");
             Path uploadFolder = (Path) context.getAttribute("uploadFolder");
             List<String> classesNames = ClasseUtilitaire.findAllClassNames(rootDir, "");
-            List<String> classesNames = ClasseUtilitaire.findAllClassNames(rootDir, "");
-            Object[] objects = ClasseUtilitaire.giveMethodParameters(map, req, url, classesNames);
             Class<?> c = Class.forName(map.getValue().getClassName());
             Object instance = c.getDeclaredConstructor().newInstance();
             Object[] objects = ClasseUtilitaire.giveMethodParameters(instance, uploadFolder, map, req, url,
                     classesNames);
             Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
-            Object obj = m.invoke(instance, objects);
-
             Object obj = m.invoke(instance, objects);
             Class<?> typeRetour = m.getReturnType();
 

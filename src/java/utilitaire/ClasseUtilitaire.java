@@ -362,7 +362,8 @@ public class ClasseUtilitaire {
         return params;
     }
 
-    public static Object[] giveMethodParameters(Object instance, Path uploadFolder,Map.Entry<String, MappingMethodClass> map, HttpServletRequest req,
+    public static Object[] giveMethodParameters(Object instance, Path uploadFolder,
+            Map.Entry<String, MappingMethodClass> map, HttpServletRequest req,
             String url, List<String> classes) throws Exception {
         System.out.println("afficheo anie le map e:" + map);
         System.out.println("ahoana ity ry zandry e: " + map.getValue().getMethodName());
@@ -378,17 +379,16 @@ public class ClasseUtilitaire {
         int i = 0;
         String value = null;
         List<String> params = getHttpParameters(req);
-         Object maps = null;
+        Object maps = null;
         boolean hasAttachedFiles = false;
-        if(GlobalRequestServlet.isMultiPart(req)){
+        if (GlobalRequestServlet.isMultiPart(req)) {
             hasAttachedFiles = GlobalRequestServlet.hasAttachedFiles(req);
         }
         if (params.size() != 0 || hasAttachedFiles) {
             maps = Sprint8.buildMap(req, map.getValue(), classes);
         }
         if (params.size() != 0) {
-            boolean hasMap = Sprint8.hasMap(m);
-            
+            System.out.println("ahona tsara hoe ry benja kely:");
             for (Parameter p : m.getParameters()) {
                 List<String> reqParamName = Sprint8.getAppropriateRequestParamName(p, params);
                 if (reqParamName.size() != 0) {
