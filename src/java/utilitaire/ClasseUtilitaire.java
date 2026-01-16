@@ -72,7 +72,6 @@ public class ClasseUtilitaire {
             }
             cpt--;
         }
-        System.out.println("misy olana sahady:" + classe);
         return classe;
     }
 
@@ -81,6 +80,7 @@ public class ClasseUtilitaire {
         Map<String, List<MappingMethodClass>> results = new HashMap<>();
 
         List<String> classNames = findAllClassNames(file, "");
+
 
         for (String className : classNames) {
 
@@ -93,7 +93,7 @@ public class ClasseUtilitaire {
                 continue;
 
             for (Method m : clazz.getDeclaredMethods()) {
-
+                System.out.println("nom de methode :"+m.getName());
                 String url = null;
                 String httpMethod = null;
 
@@ -139,12 +139,14 @@ public class ClasseUtilitaire {
         return results;
     }
 
-    public static Map.Entry<String, MappingMethodClass> getRelevantMethodAndClassNames(
+    public static Map.Entry<String, MappingMethodClass>getRelevantMethodAndClassNames(
             Map<String, List<MappingMethodClass>> urlsWithMappedMethodClass, File file, String url, String httpMethod)
             throws Exception {
         Map.Entry<String, MappingMethodClass> result = null;
 
         try {
+            System.out.println("http methode e: "+httpMethod);
+            System.out.println("resultat: "+urlsWithMappedMethodClass);
             result = getMethodClassNameByUrlAndMethod(urlsWithMappedMethodClass, url, httpMethod);
 
         } catch (Exception e) {
@@ -168,8 +170,8 @@ public class ClasseUtilitaire {
                 continue;
             }
 
-            MappingMethodClass method = findMethodByHttpMethod(entry.getValue(), httpMethod);
-
+            MappingMethodClass method = findMmcByHttpMethod(entry.getValue(), httpMethod);
+            // System.out.println("http method: "+ );
             if (method != null) {
                 return new AbstractMap.SimpleEntry<>(entry.getKey(), method);
             }
@@ -195,7 +197,7 @@ public class ClasseUtilitaire {
         return matcher != null && !matcher.isEmpty();
     }
 
-    private static MappingMethodClass findMethodByHttpMethod(
+    private static MappingMethodClass findMmcByHttpMethod(
             List<MappingMethodClass> methods,
             String httpMethod) {
 
@@ -386,7 +388,6 @@ public class ClasseUtilitaire {
         if (!requestParams.isEmpty() || hasAttachedFiles) {
             bodyMap = Sprint8.buildMap(req, map.getValue(), classes);
         }
-
         for (int i = 0; i < parameters.length; i++) {
             resolvedParams[i] = resolveSingleParameter(
                     parameters[i],
@@ -397,7 +398,6 @@ public class ClasseUtilitaire {
 
         Sprint10.injectUploadIfNeeded(instance, uploadFolder, controllerClass);
         resolvePathVariables(method, resolvedParams, map.getKey(), url);
-
         return resolvedParams;
     }
 

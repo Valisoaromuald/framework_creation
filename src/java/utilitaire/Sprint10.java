@@ -21,7 +21,7 @@ public class Sprint10 {
             Object instance,
             Path uploadFolder,
             Class<?> controllerClass) throws Exception {
-
+                System.out.println("injectUploadIfNeeded called");
         Field uploadField = Sprint10.FieldForUpload(controllerClass);
         if (uploadField == null)
             return;

@@ -49,7 +49,6 @@ public class GlobalRequestServlet extends HttpServlet {
             context.setAttribute("hashmap", mappingMethodClass);
             context.setAttribute("rootPath", root);
             context.setAttribute("uploadFolder", uploadFolder);
-      
         } catch (Exception e) {
             System.out.println("Erreur d'initialisation : " + e.getMessage());
             e.printStackTrace();
@@ -109,8 +108,6 @@ public class GlobalRequestServlet extends HttpServlet {
             try {
                 Map<String, List<MappingMethodClass>> urlsWithMappedMethodAndClass = (Map<String, List<MappingMethodClass>>) context
                         .getAttribute("hashmap");
-
-
                 Map.Entry<String, MappingMethodClass> urlInfo = ClasseUtilitaire
                         .getRelevantMethodAndClassNames(urlsWithMappedMethodAndClass, root, path, httpMethod);
                 if (urlInfo == null) {
