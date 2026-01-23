@@ -26,6 +26,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import utilitaire.ClasseUtilitaire;
 import utilitaire.MappingMethodClass;
 import utilitaire.ModelView;
+import utilitaire.Sprint11;
 import utilitaire.Sprint8;
 import utilitaire.Sprint9.JsonResponse;
 import utilitaire.Sprint9.JsonUtil;
@@ -49,7 +50,7 @@ public class GlobalRequestServlet extends HttpServlet {
             context.setAttribute("hashmap", mappingMethodClass);
             context.setAttribute("rootPath", root);
             context.setAttribute("uploadFolder", uploadFolder);
-      
+            
         } catch (Exception e) {
             System.out.println("Erreur d'initialisation : " + e.getMessage());
             e.printStackTrace();
@@ -109,8 +110,6 @@ public class GlobalRequestServlet extends HttpServlet {
             try {
                 Map<String, List<MappingMethodClass>> urlsWithMappedMethodAndClass = (Map<String, List<MappingMethodClass>>) context
                         .getAttribute("hashmap");
-
-
                 Map.Entry<String, MappingMethodClass> urlInfo = ClasseUtilitaire
                         .getRelevantMethodAndClassNames(urlsWithMappedMethodAndClass, root, path, httpMethod);
                 if (urlInfo == null) {
@@ -171,7 +170,11 @@ public class GlobalRequestServlet extends HttpServlet {
             Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
             Object obj = m.invoke(instance, objects);
             Class<?> typeRetour = m.getReturnType();
-
+            System.out.println("map session: "+Sprint11.getSessionMap(m.getParameters()));
+            if(Sprint11.getSessionMap(m.getParameters())!= null){
+                System.out.println("mankato lesy zandry an"+Sprint11.extractSessionMap(objects, m.getParameters()));
+                Sprint11.remettreMapDansSession(req,Sprint11.extractSessionMap(objects, m.getParameters()));
+            }
             if (typeRetour.equals(String.class)) {
                 res.setContentType("text/plain");
                 PrintWriter out = res.getWriter();
@@ -180,7 +183,6 @@ public class GlobalRequestServlet extends HttpServlet {
                 res.setContentType("text/html");
                 RequestDispatcher dispat = null;
                 ModelView mv = (ModelView) obj;
-
                 if (mv.getObjects() != null) {
                     for (Map.Entry<String, Object> entry : mv.getObjects().entrySet()) {
                         req.setAttribute(entry.getKey(), entry.getValue());

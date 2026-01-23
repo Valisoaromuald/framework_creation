@@ -18,6 +18,7 @@ import jakarta.servlet.http.Part;
 import servlet.GlobalRequestServlet;
 
 import annotation.InputParam;
+import annotation.Session;
 import jakarta.servlet.http.HttpServletRequest;
 import utilitaire.Sprint8Bis.Sprint8Bis;
 
@@ -33,12 +34,13 @@ public class Sprint8 {
                 Type keyType = pt.getActualTypeArguments()[0];
                 Type valueType = pt.getActualTypeArguments()[1];
                 if ((keyType == String.class && valueType == Object.class)) {
-                    result = 1;
+                    Session sessionAnotation = ClasseUtilitaire.getSpecificAnnotation(p,Session.class);
+                    result = sessionAnotation == null ?1 :  3;
                     break;
                 } else if (keyType == String.class && valueType == byte[].class) {
                     result = 2;
                     break;
-                }
+                }   
                 else{
                     throw new Exception("le type de la cle de map est:"+keyType+" et celui de la valeur:"+valueType+", ils ne sont pas acceptables");
                 }
@@ -98,6 +100,7 @@ public class Sprint8 {
         Object tempo = null;
         String[] paramValues = null;
         if (hasMap != 0) {
+            System.out.println("has map"+hasMap);
             if (hasMap == 1) {
                 Class<?> referenceClassForMap = RelevantClassWithHttpParameters(paramLists, allClasses);
                 if (referenceClassForMap != null) {
@@ -112,8 +115,11 @@ public class Sprint8 {
                     }
                     result = map;
                 }
-            } else {
+            } else if (hasMap == 2) {
                 result = GlobalRequestServlet.buildMapForFile(req);
+            }
+            else{
+                result = Sprint11.buildMapForSession(req);
             }
         }
 
