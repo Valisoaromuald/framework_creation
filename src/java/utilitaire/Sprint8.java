@@ -35,7 +35,7 @@ public class Sprint8 {
                 Type valueType = pt.getActualTypeArguments()[1];
                 if ((keyType == String.class && valueType == Object.class)) {
                     Session sessionAnotation = ClasseUtilitaire.getSpecificAnnotation(p,Session.class);
-                    result = sessionAnotation!= null ?1 :  3;
+                    result = sessionAnotation == null ?1 :  3;
                     break;
                 } else if (keyType == String.class && valueType == byte[].class) {
                     result = 2;
@@ -100,6 +100,7 @@ public class Sprint8 {
         Object tempo = null;
         String[] paramValues = null;
         if (hasMap != 0) {
+            System.out.println("has map"+hasMap);
             if (hasMap == 1) {
                 Class<?> referenceClassForMap = RelevantClassWithHttpParameters(paramLists, allClasses);
                 if (referenceClassForMap != null) {
