@@ -27,7 +27,7 @@ public class Sprint11 {
             while (attributeNames.hasMoreElements()) {
                 String attributeName = attributeNames.nextElement();
                 Object attributeValue = session.getAttribute(attributeName);
-                maps.put(attributeName, attributeValue);
+                maps.computeIfAbsent(attributeName, k->attributeValue);
             }
         return maps;
     }
