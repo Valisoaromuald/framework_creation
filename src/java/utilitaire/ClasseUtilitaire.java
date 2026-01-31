@@ -353,8 +353,17 @@ public class ClasseUtilitaire {
     }
 
     public static <T extends Annotation> T getSpecificAnnotation(
-            Parameter p, Class<T> annotationClass) {
-        return p.getAnnotation(annotationClass);
+            Object  object, Class<T> annotationClass) {
+        if(object instanceof Parameter p){
+            return p.getAnnotation(annotationClass);
+        }
+        else if(object instanceof Method m){
+            return m.getAnnotation(annotationClass);
+        }
+        else if(object instanceof Field f){
+            return f.getAnnotation(annotationClass);
+        }
+        return null;
     }
 
     public static List<String> getHttpParameters(HttpServletRequest req) {
