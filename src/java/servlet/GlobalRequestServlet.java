@@ -19,6 +19,7 @@ import context.ControllerContext;
 import javax.naming.Context;
 
 import annotation.Json;
+import binder.ParameterBinder;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -35,25 +36,32 @@ import utilitaire.Sprint9.JsonUtil;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.annotation.MultipartConfig;
 import factory.ControllerFactory;
+import invoker.MethodInvoker;
 
 @MultipartConfig
 public class GlobalRequestServlet extends HttpServlet {
     private File root;
-    private ControllerFactory controllerFactory=new ControllerFactory();
+    private ControllerFactory controllerFactory;
+    private ParameterBinder parameterBinder;
+    private MethodInvoker methodInvoker;
+    ServletContext context;
 
     @Override
     public void init() throws ServletException {
         try {
-            ServletContext context = getServletContext();
+            parameterBinder = new ParameterBinder();
+            controllerFactory = new ControllerFactory();
+            methodInvoker = new MethodInvoker();
+            this.context = getServletContext();
             String rootPath = context.getRealPath("/");
             root = new File(rootPath);
             String uploadFolderName = rootPath + "uploads";
             Path uploadFolder = Paths.get(uploadFolderName);
             Map<String, List<MappingMethodClass>> mappingMethodClass = ClasseUtilitaire
                     .generateUrlsWithMappedMethodClass(root);
-            context.setAttribute("hashmap", mappingMethodClass);
-            context.setAttribute("rootPath", root);
-            context.setAttribute("uploadFolder", uploadFolder);
+            this.context.setAttribute("hashmap", mappingMethodClass);
+            this.context.setAttribute("rootPath", root);
+            this.context.setAttribute("uploadFolder", uploadFolder);
 
         } catch (Exception e) {
             System.out.println("Erreur d'initialisation : " + e.getMessage());
@@ -165,20 +173,22 @@ public class GlobalRequestServlet extends HttpServlet {
     public void actionToDo(Map.Entry<String, MappingMethodClass> map, String url, HttpServletRequest req,
             HttpServletResponse res) throws Exception {
         try {
-            ServletContext context = getServletContext();
-            File rootDir = (File) context.getAttribute("rootPath");
-            Path uploadFolder = (Path) context.getAttribute("uploadFolder");
+
+            File rootDir = (File) this.context.getAttribute("rootPath");
+            Path uploadFolder = (Path) this.context.getAttribute("uploadFolder");
             List<String> classesNames = ClasseUtilitaire.findAllClassNames(rootDir, "");
             ControllerContext controllerContext = controllerFactory.create(map.getValue());
-            Object instance = controllerContext.getControllerInstance();
             Method m = controllerContext.getMethod();
             Object[] objects = null;
             Object obj = null;
-            if (Sprint11Bis.MethodCanBeInvoked(m, req, context)) {
-                objects = ClasseUtilitaire.giveMethodParameters(instance, uploadFolder, map, req, url,
-                        classesNames);
-                obj = m.invoke(instance, objects);
-            }
+            objects = parameterBinder.bind(
+                    controllerContext,
+                    uploadFolder,
+                    map,
+                    req,
+                    url,
+                    classesNames);
+            obj = methodInvoker.invoke(controllerContext, req, this.context);
             Class<?> typeRetour = m.getReturnType();
             System.out.println("map session: " + Sprint11.getSessionMap(m.getParameters()));
             if (Sprint11.getSessionMap(m.getParameters()) != null) {
