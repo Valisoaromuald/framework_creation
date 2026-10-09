@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import jakarta.servlet.http.Part;
+import response.ResponseHandler;
 import context.ControllerContext;
 
 import javax.naming.Context;
@@ -45,6 +46,7 @@ public class GlobalRequestServlet extends HttpServlet {
     private ParameterBinder parameterBinder;
     private MethodInvoker methodInvoker;
     ServletContext context;
+    private ResponseHandler responseHandler;
 
     @Override
     public void init() throws ServletException {
@@ -52,6 +54,7 @@ public class GlobalRequestServlet extends HttpServlet {
             parameterBinder = new ParameterBinder();
             controllerFactory = new ControllerFactory();
             methodInvoker = new MethodInvoker();
+            responseHandler = new ResponseHandler();
             this.context = getServletContext();
             String rootPath = context.getRealPath("/");
             root = new File(rootPath);
@@ -180,53 +183,26 @@ public class GlobalRequestServlet extends HttpServlet {
             ControllerContext controllerContext = controllerFactory.create(map.getValue());
             Method m = controllerContext.getMethod();
             Object[] objects = null;
-            Object obj = null;
             objects = parameterBinder.bind(
-                    controllerContext,
-                    uploadFolder,
-                    map,
-                    req,
-                    url,
-                    classesNames);
-            obj = methodInvoker.invoke(controllerContext, req, this.context);
+                controllerContext,
+                uploadFolder,
+                map,
+                req,
+                url,
+                classesNames);
+                methodInvoker.invoke(controllerContext, req, this.context);
+                Object obj = controllerContext.getResult();
             Class<?> typeRetour = m.getReturnType();
-            System.out.println("map session: " + Sprint11.getSessionMap(m.getParameters()));
+            // System.out.println("map session: " +
+            // Sprint11.getSessionMap(m.getParameters()));
             if (Sprint11.getSessionMap(m.getParameters()) != null) {
                 System.out.println("mankato lesy zandry an" + Sprint11.extractSessionMap(objects, m.getParameters()));
                 Sprint11.remettreMapDansSession(req, Sprint11.extractSessionMap(objects, m.getParameters()));
             }
-            if (typeRetour.equals(String.class)) {
-                res.setContentType("text/plain");
-                PrintWriter out = res.getWriter();
-                out.println(obj);
-            } else if (typeRetour.equals(ModelView.class)) {
-                res.setContentType("text/html");
-                ModelView mv = (ModelView) obj;
-                if (mv.getObjects() != null) {
-                    for (Map.Entry<String, Object> entry : mv.getObjects().entrySet()) {
-                        req.setAttribute(entry.getKey(), entry.getValue());
-                    }
-                }
-                RequestDispatcher dispatcher = req.getRequestDispatcher("/" + mv.getView());
-                dispatcher.forward(req, res);
-                return;
-            } else {
-                if (m != null) {
-                    Json jsonAnnotation = m.getAnnotation(Json.class);
-                    if (jsonAnnotation != null) {
-                        try {
-                            JsonResponse<Object> jsonResponse = new JsonResponse<>("success", res.getStatus(), obj);
-                            writeJson(res, jsonResponse);
-
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            res.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                            writeJson(res, new JsonResponse<>("error", res.getStatus(), null));
-                        }
-                    }
-                }
-
-            }
+            responseHandler.handle(
+                    controllerContext,
+                    req,
+                    res);
         } catch (InvocationTargetException ite) {
             Throwable cause = ite.getCause(); // <-- vraie exception du contrôleur
             cause.printStackTrace();
@@ -234,7 +210,7 @@ public class GlobalRequestServlet extends HttpServlet {
 
             JsonResponse<Object> errorResponse = new JsonResponse<>("error", res.getStatus(), cause.getMessage());
 
-            writeJson(res, errorResponse);
+            responseHandler.writeJson(res, errorResponse);
         } catch (
 
         Exception e) {
@@ -243,13 +219,6 @@ public class GlobalRequestServlet extends HttpServlet {
         }
     }
 
-    private void writeJson(HttpServletResponse resp, Object obj) throws IOException {
-        resp.setContentType("application/json");
-        try {
-            resp.getWriter().write(JsonUtil.toJson(obj));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
+
 
 }

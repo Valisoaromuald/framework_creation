@@ -12,6 +12,9 @@ public class ControllerContext {
 
     private Object[] arguments;
 
+    private Object result;
+
+
     public ControllerContext() {
     }
 
@@ -55,5 +58,14 @@ public class ControllerContext {
     public void setArguments(Object[] arguments) {
         this.arguments = arguments;
     }
+
+        public Object getResult() {
+        return result;
+    }
+
+    public void setResult(Object result) {
+        this.result = result;
+    }
+
 
 }

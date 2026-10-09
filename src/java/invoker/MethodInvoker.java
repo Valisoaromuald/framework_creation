@@ -9,7 +9,7 @@ import utilitaire.Sprint11Bis.Sprint11Bis;
 
 public class MethodInvoker {
 
-    public Object invoke(
+    public void invoke(
             ControllerContext context,
             HttpServletRequest request,
             ServletContext servletContext) throws Exception {
@@ -17,12 +17,12 @@ public class MethodInvoker {
         Method method = context.getMethod();
 
         if (!Sprint11Bis.MethodCanBeInvoked(method, request, servletContext)) {
-            return null;
+            return ;
         }
-
-        return method.invoke(
+        context.setResult(
+        method.invoke(
                 context.getControllerInstance(),
-                context.getArguments());
+                context.getArguments()));
     }
 
 }
