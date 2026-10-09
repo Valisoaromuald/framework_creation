@@ -44,7 +44,7 @@ public class Sprint8Bis {
     public static List<String> precisionNomsAttributs(Class<?> clazz) {
         List<String> results = new ArrayList<String>();
         Field[] fields = clazz.getDeclaredFields();
-        String initialeNomClasse = clazz.getName().substring(0, 1).toLowerCase();
+        String initialeNomClasse = clazz.getName().toLowerCase();
         for (Field f : fields) {
             results.add(initialeNomClasse + "." + f.getName().toLowerCase());
         }
@@ -61,7 +61,7 @@ public class Sprint8Bis {
         System.out.println("compteur :" + compteur);
         Field[] fields = clazz.getDeclaredFields();
         if (compteur == 0) {
-            partReqParamName = clazz.getName().substring(0, 1).toLowerCase();
+            partReqParamName = clazz.getName().toLowerCase();
         }
         for (int i = 0; i < fields.length; i++) {
             Field f = fields[i];
@@ -352,7 +352,6 @@ public class Sprint8Bis {
             } else {
                 partReqParamName = buildPartReqParamName(partReqParamName, nombresEntreCrochet);
                 List<String> listAngalanaValeurs = getCorrespondingReqParamName(partReqParamName, reqParamsName);
-                nombresEntreCrochet.removeLast();
                 setValue(array, i, partReqParamName, listAngalanaValeurs, req);
             }
         }

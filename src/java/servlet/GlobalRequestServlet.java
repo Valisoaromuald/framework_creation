@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import jakarta.servlet.http.Part;
+import context.ControllerContext;
 
 import javax.naming.Context;
 
@@ -33,10 +34,12 @@ import utilitaire.Sprint9.JsonResponse;
 import utilitaire.Sprint9.JsonUtil;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.annotation.MultipartConfig;
+import factory.ControllerFactory;
 
 @MultipartConfig
 public class GlobalRequestServlet extends HttpServlet {
     private File root;
+    private ControllerFactory controllerFactory=new ControllerFactory();
 
     @Override
     public void init() throws ServletException {
@@ -51,7 +54,7 @@ public class GlobalRequestServlet extends HttpServlet {
             context.setAttribute("hashmap", mappingMethodClass);
             context.setAttribute("rootPath", root);
             context.setAttribute("uploadFolder", uploadFolder);
-            
+
         } catch (Exception e) {
             System.out.println("Erreur d'initialisation : " + e.getMessage());
             e.printStackTrace();
@@ -95,6 +98,7 @@ public class GlobalRequestServlet extends HttpServlet {
         String contextPath = request.getContextPath();
         String uri = request.getRequestURI();
         String path = uri.substring(contextPath.length());
+        System.out.println("eto kely anie: " + path);
         String httpMethod = request.getMethod();
         if (path.equals("/") || path.isEmpty()) {
             path = "/index.html";
@@ -138,6 +142,7 @@ public class GlobalRequestServlet extends HttpServlet {
     public static boolean hasAttachedFiles(HttpServletRequest req) throws Exception {
         return req.getParts() != null && req.getParts().size() != 0;
     }
+
     public static boolean isMultiPart(HttpServletRequest request) {
         String contentType = request.getContentType();
         return contentType != null && contentType.toLowerCase().startsWith("multipart/");
@@ -164,21 +169,21 @@ public class GlobalRequestServlet extends HttpServlet {
             File rootDir = (File) context.getAttribute("rootPath");
             Path uploadFolder = (Path) context.getAttribute("uploadFolder");
             List<String> classesNames = ClasseUtilitaire.findAllClassNames(rootDir, "");
-            Class<?> c = Class.forName(map.getValue().getClassName());
-            Object instance = c.getDeclaredConstructor().newInstance();
-            Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
+            ControllerContext controllerContext = controllerFactory.create(map.getValue());
+            Object instance = controllerContext.getControllerInstance();
+            Method m = controllerContext.getMethod();
             Object[] objects = null;
             Object obj = null;
-            if(Sprint11Bis.MethodCanBeInvoked(m, req,getServletContext())){
+            if (Sprint11Bis.MethodCanBeInvoked(m, req, context)) {
                 objects = ClasseUtilitaire.giveMethodParameters(instance, uploadFolder, map, req, url,
                         classesNames);
                 obj = m.invoke(instance, objects);
             }
             Class<?> typeRetour = m.getReturnType();
-            System.out.println("map session: "+Sprint11.getSessionMap(m.getParameters()));
-            if(Sprint11.getSessionMap(m.getParameters())!= null){
-                System.out.println("mankato lesy zandry an"+Sprint11.extractSessionMap(objects, m.getParameters()));
-                Sprint11.remettreMapDansSession(req,Sprint11.extractSessionMap(objects, m.getParameters()));
+            System.out.println("map session: " + Sprint11.getSessionMap(m.getParameters()));
+            if (Sprint11.getSessionMap(m.getParameters()) != null) {
+                System.out.println("mankato lesy zandry an" + Sprint11.extractSessionMap(objects, m.getParameters()));
+                Sprint11.remettreMapDansSession(req, Sprint11.extractSessionMap(objects, m.getParameters()));
             }
             if (typeRetour.equals(String.class)) {
                 res.setContentType("text/plain");
@@ -196,7 +201,7 @@ public class GlobalRequestServlet extends HttpServlet {
                 dispatcher.forward(req, res);
                 return;
             } else {
-                if (m != null) {                    
+                if (m != null) {
                     Json jsonAnnotation = m.getAnnotation(Json.class);
                     if (jsonAnnotation != null) {
                         try {

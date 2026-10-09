@@ -1,7 +1,10 @@
 package utilitaire;
+
+import java.lang.reflect.Method;
+
 public class MappingMethodClass {
     private String className;
-    private String methodName;
+    private Method method;
     private String HttpMethod;
 
     public String getHttpMethod() {
@@ -16,21 +19,21 @@ public class MappingMethodClass {
         this.className = className;
     }
 
-    public String getMethodName() {
-        return this.methodName;
+    public Method getMethod() {
+        return this.method;
     }
 
-    public void setMethodName(String methodName) {
-        this.methodName = methodName;
+    public void setMethod(Method method) {
+        this.method = method;
     }
 
     public void setHttpMethod(String httpMethod) {
         HttpMethod = httpMethod;
     }
 
-    public MappingMethodClass(String className, String methodName, String httpMethod) {
+    public MappingMethodClass(String className, Method method, String httpMethod) {
         this.className = className;
-        this.methodName = methodName;
+        this.method = method;
         this.HttpMethod = httpMethod;
     }
 
