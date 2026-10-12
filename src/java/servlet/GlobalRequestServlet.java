@@ -28,6 +28,7 @@ import utilitaire.MappingMethodClass;
 import utilitaire.ModelView;
 import utilitaire.Sprint11;
 import utilitaire.Sprint8;
+import utilitaire.Sprint11Bis.Sprint11Bis;
 import utilitaire.Sprint9.JsonResponse;
 import utilitaire.Sprint9.JsonUtil;
 import jakarta.servlet.ServletContext;
@@ -165,10 +166,14 @@ public class GlobalRequestServlet extends HttpServlet {
             List<String> classesNames = ClasseUtilitaire.findAllClassNames(rootDir, "");
             Class<?> c = Class.forName(map.getValue().getClassName());
             Object instance = c.getDeclaredConstructor().newInstance();
-            Object[] objects = ClasseUtilitaire.giveMethodParameters(instance, uploadFolder, map, req, url,
-                    classesNames);
             Method m = ClasseUtilitaire.getMethodByNom(c, map.getValue().getMethodName());
-            Object obj = m.invoke(instance, objects);
+            Object[] objects = null;
+            Object obj = null;
+            if(Sprint11Bis.MethodCanBeInvoked(m, req,getServletContext())){
+                objects = ClasseUtilitaire.giveMethodParameters(instance, uploadFolder, map, req, url,
+                        classesNames);
+                obj = m.invoke(instance, objects);
+            }
             Class<?> typeRetour = m.getReturnType();
             System.out.println("map session: "+Sprint11.getSessionMap(m.getParameters()));
             if(Sprint11.getSessionMap(m.getParameters())!= null){
@@ -181,7 +186,6 @@ public class GlobalRequestServlet extends HttpServlet {
                 out.println(obj);
             } else if (typeRetour.equals(ModelView.class)) {
                 res.setContentType("text/html");
-                RequestDispatcher dispat = null;
                 ModelView mv = (ModelView) obj;
                 if (mv.getObjects() != null) {
                     for (Map.Entry<String, Object> entry : mv.getObjects().entrySet()) {

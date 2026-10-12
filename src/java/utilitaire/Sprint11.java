@@ -47,8 +47,7 @@ public class Sprint11 {
 
         for (int i = 0; i < parameters.length; i++) {
             if (isSessionMap(parameters[i])) {
-
-                if (!(objects[i] instanceof Map)) {
+                if (!(objects[i] instanceof Map) && objects[i]!=null) {
                     throw new IllegalStateException(
                             "Le paramètre marqué SessionMap n'est pas une Map");
                 }
@@ -64,9 +63,14 @@ public class Sprint11 {
 
     public static void remettreMapDansSession(HttpServletRequest req,Map<String,Object> sessionMap){
         HttpSession session = req.getSession();
-        for(Map.Entry<String,Object> entry: sessionMap.entrySet()){
-            System.out.println("velom mahereza");
-            session.setAttribute(entry.getKey(),entry.getValue());
+        if(sessionMap!= null){
+            for(Map.Entry<String,Object> entry: sessionMap.entrySet()){
+                System.out.println("velom mahereza");
+                session.setAttribute(entry.getKey(),entry.getValue());
+            }
+        }
+        else{
+            session.invalidate();
         }
     }
     public static boolean isSessionMap(Parameter p) {
@@ -75,7 +79,7 @@ public class Sprint11 {
         System.out.println("annotation session: "+sessionAnnotation);
         if (sessionAnnotation != null && type instanceof ParameterizedType pt) {
             Object[] args = pt.getActualTypeArguments();
-            if (args.length == 2 && args[0] == String.class && args[1] == Object.class) {
+            if (args.length == 2 && args[0] == String.class && args[1] == Object.class ) {
                 return true;
             }
         }
