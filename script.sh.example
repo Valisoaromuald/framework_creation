@@ -1,0 +1,87 @@
+#!/bin/bash
+
+#########################################
+# Configuration
+#########################################
+
+# Dossier contenant les sources Java
+SRC_PATH="src/java"
+
+# Dossier contenant les bibliothèques (.jar)
+LIB_PATH="lib"
+
+# Dossier temporaire de compilation
+BUILD_PATH="bin"
+
+# Nom du jar généré
+JAR_NAME="frontServlet.jar"
+
+# Dossier où copier le jar
+DEPLOY_PATH="/chemin/vers/votre/projet/lib"
+
+#########################################
+# Couleurs
+#########################################
+
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+ORANGE='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+#########################################
+# Nettoyage
+#########################################
+
+echo -e "${BLUE}Nettoyage...${NC}"
+
+rm -rf "$BUILD_PATH"
+mkdir -p "$BUILD_PATH"
+
+#########################################
+# Compilation
+#########################################
+
+echo -e "${BLUE}Compilation...${NC}"
+
+find "$SRC_PATH" -name "*.java" > source.txt
+
+javac -d "$BUILD_PATH" -cp "$LIB_PATH/*" @source.txt
+
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Compilation échouée${NC}"
+    rm source.txt
+    exit 1
+fi
+
+rm source.txt
+
+#########################################
+# Création du jar
+#########################################
+
+echo -e "${BLUE}Création du JAR...${NC}"
+
+cd "$BUILD_PATH" || exit 1
+
+jar -cvf "../$JAR_NAME" ./* > /dev/null
+
+cd ..
+
+#########################################
+# Déploiement
+#########################################
+
+echo -e "${BLUE}Déploiement...${NC}"
+
+mkdir -p "$DEPLOY_PATH"
+
+cp "$JAR_NAME" "$DEPLOY_PATH"
+
+#########################################
+# Nettoyage
+#########################################
+
+rm -rf "$BUILD_PATH"
+
+echo -e "${GREEN}Terminé.${NC}"
