@@ -15,7 +15,9 @@ import java.util.List;
 import java.util.Map;
 import jakarta.servlet.http.Part;
 import response.ResponseHandler;
+import session.SessionHandler;
 import context.ControllerContext;
+import context.FrameworkContext;
 
 import javax.naming.Context;
 
@@ -42,34 +44,51 @@ import invoker.MethodInvoker;
 @MultipartConfig
 public class GlobalRequestServlet extends HttpServlet {
     private File root;
+    private FrameworkContext frameworkContext;
     private ControllerFactory controllerFactory;
     private ParameterBinder parameterBinder;
     private MethodInvoker methodInvoker;
-    ServletContext context;
+    private ServletContext context;
     private ResponseHandler responseHandler;
+    private SessionHandler sessionHandler;
 
     @Override
     public void init() throws ServletException {
+
         try {
+
             parameterBinder = new ParameterBinder();
             controllerFactory = new ControllerFactory();
             methodInvoker = new MethodInvoker();
             responseHandler = new ResponseHandler();
+            sessionHandler = new SessionHandler();
             this.context = getServletContext();
+
+            frameworkContext = new FrameworkContext();
+
             String rootPath = context.getRealPath("/");
-            root = new File(rootPath);
-            String uploadFolderName = rootPath + "uploads";
-            Path uploadFolder = Paths.get(uploadFolderName);
-            Map<String, List<MappingMethodClass>> mappingMethodClass = ClasseUtilitaire
-                    .generateUrlsWithMappedMethodClass(root);
-            this.context.setAttribute("hashmap", mappingMethodClass);
-            this.context.setAttribute("rootPath", root);
-            this.context.setAttribute("uploadFolder", uploadFolder);
+
+            File root = new File(rootPath);
+
+            Path uploadFolder = Paths.get(rootPath, "uploads");
+
+            List<String> classNames = ClasseUtilitaire.findAllClassNames(root, "");
+
+            Map<String, List<MappingMethodClass>> mappings = ClasseUtilitaire.generateUrlsWithMappedMethodClass(root);
+
+            frameworkContext.setRootDirectory(root);
+            frameworkContext.setUploadFolder(uploadFolder);
+            frameworkContext.setClassNames(classNames);
+            frameworkContext.setMappings(mappings);
+
+            context.setAttribute("frameworkContext", frameworkContext);
 
         } catch (Exception e) {
-            System.out.println("Erreur d'initialisation : " + e.getMessage());
-            e.printStackTrace();
+
+            throw new ServletException("Erreur d'initialisation du framework", e);
+
         }
+
     }
 
     @Override
@@ -124,8 +143,8 @@ public class GlobalRequestServlet extends HttpServlet {
             response.setContentType("text/html;charset=UTF-8");
 
             try {
-                Map<String, List<MappingMethodClass>> urlsWithMappedMethodAndClass = (Map<String, List<MappingMethodClass>>) context
-                        .getAttribute("hashmap");
+                Map<String, List<MappingMethodClass>> urlsWithMappedMethodAndClass = this.frameworkContext
+                        .getMappings();
                 Map.Entry<String, MappingMethodClass> urlInfo = ClasseUtilitaire
                         .getRelevantMethodAndClassNames(urlsWithMappedMethodAndClass, root, path, httpMethod);
                 if (urlInfo == null) {
@@ -173,52 +192,54 @@ public class GlobalRequestServlet extends HttpServlet {
         return result;
     }
 
-    public void actionToDo(Map.Entry<String, MappingMethodClass> map, String url, HttpServletRequest req,
+    public void actionToDo(
+            Map.Entry<String, MappingMethodClass> map,
+            String url,
+            HttpServletRequest req,
             HttpServletResponse res) throws Exception {
         try {
 
-            File rootDir = (File) this.context.getAttribute("rootPath");
-            Path uploadFolder = (Path) this.context.getAttribute("uploadFolder");
-            List<String> classesNames = ClasseUtilitaire.findAllClassNames(rootDir, "");
             ControllerContext controllerContext = controllerFactory.create(map.getValue());
-            Method m = controllerContext.getMethod();
-            Object[] objects = null;
-            objects = parameterBinder.bind(
-                controllerContext,
-                uploadFolder,
-                map,
-                req,
-                url,
-                classesNames);
-                methodInvoker.invoke(controllerContext, req, this.context);
-                Object obj = controllerContext.getResult();
-            Class<?> typeRetour = m.getReturnType();
-            // System.out.println("map session: " +
-            // Sprint11.getSessionMap(m.getParameters()));
-            if (Sprint11.getSessionMap(m.getParameters()) != null) {
-                System.out.println("mankato lesy zandry an" + Sprint11.extractSessionMap(objects, m.getParameters()));
-                Sprint11.remettreMapDansSession(req, Sprint11.extractSessionMap(objects, m.getParameters()));
-            }
+
+            parameterBinder.bind(
+                    controllerContext,
+                    frameworkContext,
+                    map,
+                    req,
+                    url);
+
+            methodInvoker.invoke(
+                    controllerContext,
+                    req,
+                    context);
+
+            sessionHandler.handle(controllerContext, req);
             responseHandler.handle(
                     controllerContext,
                     req,
                     res);
-        } catch (InvocationTargetException ite) {
-            Throwable cause = ite.getCause(); // <-- vraie exception du contrôleur
-            cause.printStackTrace();
+
+        } catch (InvocationTargetException e) {
+
+            Throwable cause = e.getCause();
+
             res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
 
-            JsonResponse<Object> errorResponse = new JsonResponse<>("error", res.getStatus(), cause.getMessage());
+            responseHandler.writeJson(
+                    res,
+                    new JsonResponse<>(
+                            "error",
+                            res.getStatus(),
+                            cause.getMessage()));
 
-            responseHandler.writeJson(res, errorResponse);
-        } catch (
+        } catch (Exception e) {
 
-        Exception e) {
-            e.printStackTrace();
-            throw new Exception("Erreur dans actionToDo:" + e.getMessage());
+            throw new Exception(
+                    "Erreur dans actionToDo",
+                    e);
+
         }
+
     }
-
-
 
 }
