@@ -76,12 +76,10 @@ public class Sprint11 {
     public static boolean isSessionMap(Parameter p) {
         Session sessionAnnotation = ClasseUtilitaire.getSpecificAnnotation(p, Session.class);
         Type type = p.getParameterizedType();
-        System.out.println("annotation session: "+sessionAnnotation);
         if (sessionAnnotation != null && type instanceof ParameterizedType pt) {
             Object[] args = pt.getActualTypeArguments();
-            if (args.length == 2 && args[0] == String.class && args[1] == Object.class ) {
-                return true;
-            }
+            return args.length == 2 && args[0] == String.class && args[1] == Object.class;
+            
         }
         return false;
     }
@@ -92,7 +90,7 @@ public class Sprint11 {
             System.out.println("annotation session: "+sessionAnnotation);
             if (sessionAnnotation != null && type instanceof ParameterizedType pt) {
                 Object[] args = pt.getActualTypeArguments();
-                if (args.length == 2 && args[0] == String.class && args[1] == Object.class) {
+                if (isSessionMap(p)) {
                     return p;
                 }
             }
