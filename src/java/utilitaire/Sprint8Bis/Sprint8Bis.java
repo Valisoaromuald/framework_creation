@@ -352,7 +352,7 @@ public class Sprint8Bis {
             } else {
                 partReqParamName = buildPartReqParamName(partReqParamName, nombresEntreCrochet);
                 List<String> listAngalanaValeurs = getCorrespondingReqParamName(partReqParamName, reqParamsName);
-                nombresEntreCrochet.removeLast();
+                // nombresEntreCrochet.removeLast();
                 setValue(array, i, partReqParamName, listAngalanaValeurs, req);
             }
         }
