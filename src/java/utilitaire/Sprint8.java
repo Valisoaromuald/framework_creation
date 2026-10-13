@@ -94,7 +94,7 @@ public class Sprint8 {
         List<String> paramLists = Collections.list(listeParametres);
 
         Class<?> clazz = Class.forName(mc.getClassName());
-        Method m = ClasseUtilitaire.getMethodByNom(clazz, mc.getMethodName());
+        Method m = mc.getMethod();
         int hasMap = hasMap(m);
         Field[] fields = clazz.getDeclaredFields();
         Object tempo = null;

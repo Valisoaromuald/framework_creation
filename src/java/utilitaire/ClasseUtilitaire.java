@@ -92,7 +92,6 @@ public class ClasseUtilitaire {
                 continue;
 
             for (Method m : clazz.getDeclaredMethods()) {
-                System.out.println("nom de methode :"+m.getName());
                 String url = null;
                 String httpMethod = null;
 
@@ -130,14 +129,13 @@ public class ClasseUtilitaire {
                 mappingMethods.add(
                         new MappingMethodClass(
                                 clazz.getName(),
-                                m.getName(),
+                                m,
                                 httpMethod));
             }
         }
 
         return results;
     }
-
     public static Map.Entry<String, MappingMethodClass>getRelevantMethodAndClassNames(
             Map<String, List<MappingMethodClass>> urlsWithMappedMethodClass, File file, String url, String httpMethod)
             throws Exception {
@@ -170,7 +168,6 @@ public class ClasseUtilitaire {
             }
 
             MappingMethodClass method = findMmcByHttpMethod(entry.getValue(), httpMethod);
-            // System.out.println("http method: "+ );
             if (method != null) {
                 return new AbstractMap.SimpleEntry<>(entry.getKey(), method);
             }
@@ -201,17 +198,10 @@ public class ClasseUtilitaire {
             String httpMethod) {
 
         for (MappingMethodClass mmc : methods) {
-            if (mmc.getHttpMethod().equals(httpMethod)) {
+            if (mmc.getHttpMethod().equals(httpMethod) || mmc.getHttpMethod().equals("ALL")) {
                 return mmc;
             }
         }
-
-        for (MappingMethodClass mmc : methods) {
-            if (mmc.getHttpMethod().equals("ALL")) {
-                return mmc;
-            }
-        }
-
         return null;
     }
 
@@ -381,9 +371,7 @@ public class ClasseUtilitaire {
             List<String> classes) throws Exception {
 
         Class<?> controllerClass = Class.forName(map.getValue().getClassName());
-        Method method = ClasseUtilitaire.getMethodByNom(
-                controllerClass,
-                map.getValue().getMethodName());
+        Method method = map.getValue().getMethod();
 
         Parameter[] parameters = method.getParameters();
         Object[] resolvedParams = parameters.length == 0 ? null : new Object[parameters.length];
@@ -430,7 +418,7 @@ public class ClasseUtilitaire {
             Parameter parameter,
             HttpServletRequest req,
             List<String> requestParams) throws Exception {
-
+        System.out.println("mbarakaly nareo:");
         Type type = parameter.getParameterizedType();
         Class<?> clazz = parameter.getType();
 
