@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -14,6 +15,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import jakarta.servlet.http.Part;
+import resolver.ExceptionResolver;
+import resolver.RouteResolver;
 import response.ResponseHandler;
 import session.SessionHandler;
 import context.ControllerContext;
@@ -51,6 +54,8 @@ public class GlobalRequestServlet extends HttpServlet {
     private ServletContext context;
     private ResponseHandler responseHandler;
     private SessionHandler sessionHandler;
+    private ExceptionResolver exceptionResolver;
+    private RouteResolver routeResvoResolver;
 
     @Override
     public void init() throws ServletException {
@@ -62,6 +67,8 @@ public class GlobalRequestServlet extends HttpServlet {
             methodInvoker = new MethodInvoker();
             responseHandler = new ResponseHandler();
             sessionHandler = new SessionHandler();
+            exceptionResolver = new ExceptionResolver(responseHandler);
+            routeResvoResolver = new RouteResolver();
             this.context = getServletContext();
 
             frameworkContext = new FrameworkContext();
@@ -74,7 +81,7 @@ public class GlobalRequestServlet extends HttpServlet {
 
             List<String> classNames = ClasseUtilitaire.findAllClassNames(root, "");
 
-            Map<String, List<MappingMethodClass>> mappings = ClasseUtilitaire.generateUrlsWithMappedMethodClass(root);
+            Map<String, List<MappingMethodClass>> mappings = RouteResolver.generateUrlsWithMappedMethodClass(root);
 
             frameworkContext.setRootDirectory(root);
             frameworkContext.setUploadFolder(uploadFolder);
@@ -121,51 +128,82 @@ public class GlobalRequestServlet extends HttpServlet {
         service(request, response);
     }
 
-    @Override
-    protected void service(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+    private boolean isStaticResource(HttpServletRequest request)
+            throws MalformedURLException {
+
         ServletContext context = getServletContext();
-        String contextPath = request.getContextPath();
-        String uri = request.getRequestURI();
-        String path = uri.substring(contextPath.length());
-        System.out.println("eto kely anie: " + path);
-        String httpMethod = request.getMethod();
+
+        String path = RouteResolver.getPath(request);
+
         if (path.equals("/") || path.isEmpty()) {
             path = "/index.html";
         }
-        URL res = context.getResource(path);
-        if (res != null) {
-            RequestDispatcher defaultDispatcher = context.getNamedDispatcher("default");
-            if (defaultDispatcher != null) {
-                defaultDispatcher.forward(request, response);
+
+        URL resource = context.getResource(path);
+
+        return resource != null;
+    }
+
+    private void forwardToDefaultServlet(
+            HttpServletRequest request,
+            HttpServletResponse response)
+            throws ServletException, IOException {
+
+        RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("default");
+
+        if (dispatcher != null) {
+            dispatcher.forward(request, response);
+        }
+    }
+
+    @Override
+    protected void service(
+            HttpServletRequest request,
+            HttpServletResponse response)
+            throws ServletException, IOException {
+
+        try {
+
+            if (isStaticResource(request)) {
+                forwardToDefaultServlet(request, response);
+                return;
             }
-        } else {
-            response.setContentType("text/html;charset=UTF-8");
+
+            Map.Entry<String, MappingMethodClass> route = routeResolver.resolve(request, frameworkContext);
+
+            if (route == null) {
+
+                String path = RouteResolver.getPath(request);
+
+                response.sendError(
+                        HttpServletResponse.SC_NOT_FOUND,
+                        "Aucune route trouvée : " + path);
+
+                return;
+            }
+
+            actionToDo(
+                    route,
+                    RouteResolver.getPath(request),
+                    request,
+                    response);
+
+        } catch (Exception e) {
 
             try {
-                Map<String, List<MappingMethodClass>> urlsWithMappedMethodAndClass = this.frameworkContext
-                        .getMappings();
-                Map.Entry<String, MappingMethodClass> urlInfo = ClasseUtilitaire
-                        .getRelevantMethodAndClassNames(urlsWithMappedMethodAndClass, root, path, httpMethod);
-                if (urlInfo == null) {
-                    PrintWriter out = response.getWriter();
-                    out.println("<h1>404 - Page / Not found</h1>");
-                    out.println("Url demandée: " + path);
-                    return;
-                }
 
-                actionToDo(urlInfo, path, request, response);
+                exceptionResolver.resolve(
+                        e,
+                        null,
+                        request,
+                        response);
 
-            } catch (Exception e) {
+            } catch (Exception ex) {
 
-                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                response.setContentType("text/plain");
-                PrintWriter out = response.getWriter();
-                out.println("UNE ERREUR EST SURVENUE");
-                out.println("Message : " + e.getMessage());
-                out.println();
-                e.printStackTrace(out);
+                throw new ServletException(ex);
+
             }
+
         }
     }
 
@@ -197,10 +235,10 @@ public class GlobalRequestServlet extends HttpServlet {
             String url,
             HttpServletRequest req,
             HttpServletResponse res) throws Exception {
+        ControllerContext controllerContext = null;
         try {
 
-            ControllerContext controllerContext = controllerFactory.create(map.getValue());
-
+            controllerContext = controllerFactory.create(map.getValue());
             parameterBinder.bind(
                     controllerContext,
                     frameworkContext,
@@ -219,25 +257,9 @@ public class GlobalRequestServlet extends HttpServlet {
                     req,
                     res);
 
-        } catch (InvocationTargetException e) {
-
-            Throwable cause = e.getCause();
-
-            res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-
-            responseHandler.writeJson(
-                    res,
-                    new JsonResponse<>(
-                            "error",
-                            res.getStatus(),
-                            cause.getMessage()));
-
         } catch (Exception e) {
-
-            throw new Exception(
-                    "Erreur dans actionToDo",
-                    e);
-
+            System.out.print("exception");
+            exceptionResolver.resolve(e, controllerContext, req, res);
         }
 
     }

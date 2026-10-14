@@ -30,14 +30,11 @@ public class JsonResponseStrategy implements ResponseStrategy {
         Json jsonAnnotation = method.getAnnotation(Json.class);
         try {
             JsonResponse<Object> jsonResponse = new JsonResponse<>("success", response.getStatus(), context.getResult());
-            ResponseHandler.writeJson(response, jsonResponse);
-
+            responseHandler.writeJson(response, jsonResponse);
+            return;
         } catch (Exception e) {
             e.printStackTrace();
         }
-        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-        ResponseHandler.writeJson(response, new JsonResponse<>("error", response.getStatus(), null));
-
     }
     
 

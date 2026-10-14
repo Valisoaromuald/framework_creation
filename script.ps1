@@ -114,6 +114,10 @@ if (Test-Path $Destination) {
     Remove-Item $Destination -Force
 }
 
+Info "Copie des dépendances..."
+
+Copy-Item "$LibPath\*.jar" $DeployPath -Force 
+
 Copy-Item $JarName $DeployPath -Force
 
 Success "Déploiement réussi."

@@ -1,7 +1,6 @@
 package utilitaire.Sprint9;
 
 import java.util.List;
-import java.util.List;
 import java.util.Map;
 
 public class JsonResponse<T> {
